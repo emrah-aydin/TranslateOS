@@ -779,7 +779,7 @@ async function loop() {
   }
   while (running) {
     try {
-      if (Date.now() - lastBeat > 10000) { lastBeat = Date.now(); log('nabız: kare ' + stats.frames + ', istek ' + stats.calls + ', önbellek ' + stats.cacheHits + ', hata ' + stats.errors + ', bekleyen ' + inFlight + (shade ? ', kutu açık' : '')); }
+      if (Date.now() - lastBeat > 10000) { lastBeat = Date.now(); log('nabız: kare ' + stats.frames + ', istek ' + stats.calls + ', önbellek ' + stats.cacheHits + ', hata ' + stats.errors + ', parmak izi ' + fpStore.length + ' (isabet ' + (stats.fpHits || 0) + '), bekleyen ' + inFlight + (shade ? ', kutu açık' : '')); }
       loopStage = 'kare bekleniyor';
       if (!latest) await withTimeout(waitFrame(), 8000, 'kare');
       var fr = latest; latest = null;
