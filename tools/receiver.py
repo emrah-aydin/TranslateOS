@@ -6,6 +6,10 @@ class H(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         n=int(self.headers.get("Content-Length",0)); body=self.rfile.read(n)
         u=urllib.parse.urlparse(self.path)
+        if u.path=="/event":
+            # altyazı olay kaydı (satır başına bir JSON) — local/ git dışında
+            open(os.path.join(D,"olaylar.jsonl"),"a",encoding="utf-8").write(body.decode("utf-8","replace").strip()+"\n")
+            self.send_response(200); self.end_headers(); return
         if u.path=="/img":
             tag=urllib.parse.parse_qs(u.query).get("tag",["x"])[0]
             p=os.path.join(D,f"{time.strftime('%H%M%S')}_{tag}.jpg"); open(p,"wb").write(body)
