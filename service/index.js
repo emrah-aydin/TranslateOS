@@ -361,6 +361,7 @@ var PROMPT = 'This is the bottom strip of a video game frame. If it contains an 
   'Rules: translate ONLY into Turkish, never into any other language. Do not censor, soften, skip or summarize anything: ' +
   'profanity, slurs, insults and slang must be translated faithfully with equally strong natural Turkish street language. ' +
   'Keep names and places as they are. Make it sound like natural spoken Turkish game subtitles. ' +
+  'Use correct standard Turkish spelling (TDK rules), e.g. "terk edilmiş", "her şey", "bir şey" are written separately. ' +
   'A dialogue subtitle is a spoken sentence, not a single name. Ignore HUD, minimap, location or street names, mission titles, ' +
   'phone screens, signs, license plates and any Turkish text. Part of the subtitle may be faint because it sits behind a ' +
   'semi-transparent box; read it carefully. If the text is unreadable, garbled or not real English words, return empty strings ' +
@@ -739,10 +740,14 @@ async function loop() {
                 if (earlyTr) {
                   // Erken gösterildi; şimdi İngilizce geldi: kontrol et, hafızaya yaz
                   if (out.rejected && shown === earlyTr) { log('erken gösterilen geri alındı (' + out.rejected + ')'); closeBox(); }
-                  var k2 = normEn(out.en);
+                  var k2 = normEn(out.en), finalTr = earlyTr;
                   if (out.en) prevEn = out.en;
-                  if (k2) remember(out.en, out.tr || earlyTr);
-                  sigCache.unshift({ sig: sig, out: { en: out.en, tr: out.tr || earlyTr } }); if (sigCache.length > 300) sigCache.pop();
+                  if (k2 && cacheByEn[k2] && cacheByEn[k2] !== earlyTr) {
+                    // Bu cümle hafızada farklı yazımla var: tutarlılık için hep hafızadaki sürüm gösterilsin
+                    finalTr = cacheByEn[k2];
+                    if (shown === earlyTr) { shown = finalTr; openBox({ en: out.en, tr: finalTr, bbox: bbox }); }
+                  } else if (k2) remember(out.en, earlyTr);       // ekranda gösterilen çeviri hafızaya yazılır
+                  sigCache.unshift({ sig: sig, out: { en: out.en, tr: finalTr } }); if (sigCache.length > 300) sigCache.pop();
                   log('tamamlandı ' + (Date.now() - tc) + ' ms: ' + (out.en || '-'));
                   return;
                 }
