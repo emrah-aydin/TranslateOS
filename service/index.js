@@ -341,6 +341,12 @@ function signature(img, box, sh) {
         fill: inBox / ((best.x1 - best.x0 + 1) * (rb1 - rb0 + 1)), share: total ? inBox / total : 0,
         bandShare: inBand ? inBox / inBand : 0      // yazı satırındaki piksellerin ne kadarı ortadaki yazı bloğunda
       };
+      // Parmak izi: yazı bloğundaki piksellerin 120x16 ızgaradaki yerleri + bloğun piksel boyutu.
+      // Aynı cümle her sahnede aynı yazı tipiyle aynı yere çizildiği için parmak izi sahneden bağımsızdır.
+      var FW = 120, FH = 16, bits = new Uint8Array(FW * FH), bw = best.x1 - best.x0 + 1, bh = rb1 - rb0 + 1;
+      for (k = 0; k < xs.length; k++) if (xs[k] >= best.x0 && xs[k] <= best.x1 && ys[k] >= rb0 && ys[k] <= rb1)
+        bits[Math.min(FH - 1, ((ys[k] - rb0) * FH / bh) | 0) * FW + Math.min(FW - 1, ((xs[k] - best.x0) * FW / bw) | 0)] = 1;
+      bbox.fp = { w: bw, h: bh, bits: bits };
     }
   }
   return { cells: cells, hidden: hidden, density: total / N, bbox: bbox, rows: rowsAll };
@@ -356,6 +362,14 @@ function sceneColor(img, r) {
     R += d[i]; G += d[i + 1]; B += d[i + 2]; n++;
   }
   return n ? [R / n, G / n, B / n] : null;
+}
+
+// Parmak izi benzerliği (0..1): boyutlar neredeyse aynı olmalı, sonra ızgara noktalarının örtüşmesi (Dice).
+function fpSim(a, b) {
+  if (!a || !b || Math.abs(a.w - b.w) > 5 || Math.abs(a.h - b.h) > 5) return 0;
+  var inter = 0, na = 0, nb = 0;
+  for (var i = 0; i < a.bits.length; i++) { if (a.bits[i]) na++; if (b.bits[i]) nb++; if (a.bits[i] && b.bits[i]) inter++; }
+  return na + nb ? 2 * inter / (na + nb) : 0;
 }
 
 // Oransal fark: 0 = aynı yazı, 1 = tamamen farklı. Ölçüm (GTA V): aynı cümle ardışık karelerde 0,02–0,07;
@@ -653,6 +667,35 @@ function normEn(t) { return String(t).toLowerCase().replace(/[^a-z0-9' ]+/g, ' '
     } catch (e) {}
   }
 })();
+// --- Parmak izi hafızası: yazının şekli → İngilizce cümle (kalıcı: fp.json) ---
+// Aynı cümle tekrar görüldüğünde yapay zekâya sormadan, sadece şekline bakarak hafızadaki Türkçe gösterilir.
+var FP_FILE = MEMORY_FILE ? MEMORY_FILE.replace(/memory\.json$|translateos-memory\.json$/, function (m) { return m.indexOf('translateos') === 0 ? 'translateos-fp.json' : 'fp.json'; }) : null;
+var FP_MATCH = 0.88, fpStore = [], fpDirty = false;
+function packBits(bits) { var out = Buffer.alloc(Math.ceil(bits.length / 8)); for (var i = 0; i < bits.length; i++) if (bits[i]) out[i >> 3] |= 1 << (i & 7); return out.toString('base64'); }
+function unpackBits(b64, n) { var buf = Buffer.from(b64, 'base64'), bits = new Uint8Array(n); for (var i = 0; i < n; i++) bits[i] = (buf[i >> 3] >> (i & 7)) & 1; return bits; }
+try { if (FP_FILE && fs.existsSync(FP_FILE)) fpStore = JSON.parse(fs.readFileSync(FP_FILE, 'utf8')).map(function (e) { return { w: e.w, h: e.h, bits: unpackBits(e.b, 1920), en: e.en }; }); } catch (e) {}
+function fpLookup(fp) {
+  if (!fp) return null;
+  var best = null, bestV = 0;
+  for (var i = 0; i < fpStore.length; i++) {
+    var e = fpStore[i]; if (Math.abs(e.w - fp.w) > 5 || Math.abs(e.h - fp.h) > 5) continue;
+    var v = fpSim(fp, e); if (v > bestV) { bestV = v; best = e; }
+  }
+  if (!best || bestV < FP_MATCH) return null;
+  var tr = cacheByEn[normEn(best.en)];
+  return tr ? { en: best.en, tr: tr, sim: bestV } : null;
+}
+function fpRemember(fp, en) {
+  if (!fp || !en) return;
+  for (var i = 0; i < fpStore.length; i++) if (fpStore[i].en === en && fpSim(fp, fpStore[i]) > 0.95) return;   // zaten var
+  fpStore.push({ w: fp.w, h: fp.h, bits: fp.bits, en: en }); if (fpStore.length > 5000) fpStore.shift();
+  fpDirty = true;
+}
+setInterval(function () {
+  if (!fpDirty || !FP_FILE) return; fpDirty = false;
+  fs.writeFile(FP_FILE, JSON.stringify(fpStore.map(function (e) { return { w: e.w, h: e.h, b: packBits(e.bits), en: e.en }; })), function () {});
+}, 7000);
+
 var memoryDirty = false;
 function remember(en, tr) {
   var k = normEn(en); if (!k || !tr) return;
@@ -800,7 +843,15 @@ async function loop() {
           for (var c = 0; c < sigCache.length; c++) if (sigDiff(sig, sigCache[c].sig) < SAME) { hit = sigCache[c].out; break; }
           // (Not: şekil benzerliğiyle 'aynı cümle' tahmini kısa satırlarda yanlış eşleştirdi; kaldırıldı. Doğruluk önce.)
           lastTiming = 'yakalama ' + fr.capMs + ' ms, çözme ' + (tSig - tDec) + ' ms, imza ' + (Date.now() - tSig) + ' ms';
-          if (hit) { stats.cacheHits++; show(seq, sig, hit, null, sig.bbox); event({ tur: 'gösterildi', kaynak: 'aynı_görüntü', en: hit.en, tr: hit.tr, gecikme_ms: 0 }); }
+          var fpHit = !hit && !underBox && sig.bbox && fpLookup(sig.bbox.fp);
+          if (fpHit) {
+            hit = { en: fpHit.en, tr: fpHit.tr };
+            stats.cacheHits++; stats.fpHits = (stats.fpHits || 0) + 1;
+            show(seq, sig, hit, null, sig.bbox);
+            log('PARMAK İZİ (benzerlik ' + fpHit.sim.toFixed(2) + '): ' + fpHit.en);
+            event({ tur: 'gösterildi', kaynak: 'parmak_izi', en: fpHit.en, tr: fpHit.tr, benzerlik: +fpHit.sim.toFixed(3), gecikme_ms: 0, yakalama_ms: fr.capMs });
+          }
+          else if (hit) { stats.cacheHits++; show(seq, sig, hit, null, sig.bbox); event({ tur: 'gösterildi', kaynak: 'aynı_görüntü', en: hit.en, tr: hit.tr, gecikme_ms: 0 }); }
           else if (Date.now() > backoffUntil && CONFIG.geminiKey && inFlight < 3) {
             stats.calls++; inFlight++; lastGemini = Date.now();
             (function (seq, sig, jpg, tc, bbox) {
@@ -820,6 +871,7 @@ async function loop() {
                     event({ tur: 'geri_alındı', sebep: out.rejected, tr: earlyTr });
                   }
                   if (k2 && !cacheByEn[k2] && earlySrc === 'yeni') remember(out.en || earlyEn, earlyTr);   // gösterilen sürüm hafızaya
+                  if (k2 && !underBoxReq[seq] && !out.rejected && sig.bbox) fpRemember(sig.bbox.fp, out.en || earlyEn);
                   if (k2 && cacheByEn[k2] && earlySrc === 'yeni' && cacheByEn[k2] !== earlyTr)
                     event({ tur: 'farklı_çeviri_bilgi', not: 'hafızada başka sürüm var; ekrandaki değiştirilmedi', ekranda: earlyTr, hafizada: cacheByEn[k2], en: out.en });
                   sigCache.unshift({ sig: sig, out: { en: out.en || earlyEn, tr: earlyTr } }); if (sigCache.length > 300) sigCache.pop();
@@ -847,6 +899,7 @@ async function loop() {
                 if (out.en) prevEn = out.en;
                 if (k && cacheByEn[k]) out.tr = cacheByEn[k];          // aynı cümle hep aynı çeviri
                 if (k) remember(out.en, out.tr);
+                if (k && !underBoxReq[seq] && !out.rejected && sig.bbox) fpRemember(sig.bbox.fp, out.en);
                 sigCache.unshift({ sig: sig, out: out }); if (sigCache.length > 300) sigCache.pop();   // boş sonuç da: aynı gürültü için tekrar sorma
                 recent.push({ sig: sig, out: out, at: Date.now() });
                 show(seq, sig, out, Date.now() - tc, bbox);
@@ -870,7 +923,7 @@ async function loop() {
 var keepAlive = null;
 service.register('start', function (message) {
   if (message.isSubscription) subscribers.push(message);
-  log('hafıza: ' + Object.keys(cacheByEn).length + ' cümle (' + (MEMORY_FILE || 'yazılamıyor') + ')');
+  log('hafıza: ' + Object.keys(cacheByEn).length + ' cümle, ' + fpStore.length + ' parmak izi (' + (MEMORY_FILE || 'yazılamıyor') + ')');
   log('start çağrıldı (abone: ' + subscribers.length + ', anahtar: ' + (CONFIG.geminiKey ? 'var' : 'YOK') + ', node ' + process.version + ')');
   if (!keepAlive) service.activityManager.create('translateos-keepalive', function (a) { keepAlive = a; });
   message.respond({ returnValue: true, status: 'started', model: MODEL });
@@ -903,4 +956,4 @@ service.register('showInput', function (m) {
   var id = 'com.webos.app.hdmi' + ((m.payload && m.payload.port) || 1);
   lunaCall('luna://com.webos.applicationManager/launch', { id: id }).then(function (r) { m.respond(r || { returnValue: true }); });
 });
-module.exports = { _test: { raceTranslate: raceTranslate, readAndTranslate: readAndTranslate, setPrev: function (p) { prevEn = p; }, tightBox: tightBox, looksEnglish: looksEnglish, looksLikeSubtitle: looksLikeSubtitle, regionBox: regionBox, signature: signature, sigDiff: sigDiff, cropForGemini: cropForGemini, decodeJpeg: decodeJpeg, initDecoder: initDecoder, EN_REGION: EN_REGION } };
+module.exports = { _test: { fpSim: fpSim, raceTranslate: raceTranslate, readAndTranslate: readAndTranslate, setPrev: function (p) { prevEn = p; }, tightBox: tightBox, looksEnglish: looksEnglish, looksLikeSubtitle: looksLikeSubtitle, regionBox: regionBox, signature: signature, sigDiff: sigDiff, cropForGemini: cropForGemini, decodeJpeg: decodeJpeg, initDecoder: initDecoder, EN_REGION: EN_REGION } };
