@@ -508,6 +508,17 @@ async function loop() {
   if (!CONFIG.geminiKey) { log('Gemini anahtarı yok (config.local.json)'); emit({ status: 'nokey' }); }
   await initDecoder();
   if (CONFIG.bench && CONFIG.bench.length) { try { await bench(); } catch (e) { log('kıyas hatası: ' + e.message); } }
+  if (CONFIG.netTest) {   // TV → Google gidiş-dönüş ve örnek çeviri süresi
+    try {
+      var pings = [];
+      for (var pi = 0; pi < 6; pi++) { var tp = Date.now(); await httpsJson('GET', '/v1beta/models/' + MODEL); pings.push(Date.now() - tp); }
+      var gens = [], sample = null; try { sample = fs.readFileSync(path.join(__dirname, 'bench.jpg')); } catch (e) {}
+      for (var gi = 0; sample && gi < 3; gi++) { var r = await readAndTranslate(sample); gens.push(r.ms); }
+      var net = await lunaCall('luna://com.palm.connectionmanager/getStatus', {});
+      log('AĞ TESTİ: bağlantı ' + (net && net.wired && net.wired.state === 'connected' ? 'kablo' : (net && net.wifi && net.wifi.state === 'connected' ? 'wifi' : '?')) +
+        ', Google gidiş-dönüş ' + pings.join('/') + ' ms, örnek çeviri ' + gens.join('/') + ' ms');
+    } catch (e) { log('ağ testi hatası: ' + e.message); }
+  }
   captureWorker(0); captureWorker(170);
   var lastSentSig = null, lastReqSig = null, shownSig = null, shown = '', emptyFrames = 0, backoffUntil = 0;
   var boxOpen = false, pendingSince = 0, boxBbox = null, peekSince = 0, minUntil = 0;
