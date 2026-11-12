@@ -433,6 +433,21 @@ async function readAndTranslate(jpg, model) {
   else if (en && !looksTurkish(tr, en)) { rejected = 'çeviri geçersiz: ' + tr; en = ''; tr = ''; }
   return { en: en, tr: tr, ms: Date.now() - t0, reused: !!res.reused, rejected: rejected };
 }
+// Wi-Fi takılmalarına karşı: istek 1,3 sn'de dönmezse aynısı bir kez daha gönderilir, önce dönen kullanılır.
+function hedgedTranslate(jpg) {
+  return new Promise(function (resolve, reject) {
+    var done = false, failures = 0, started = 1, hedge = null;
+    function ok(r) { if (!done) { done = true; clearTimeout(hedge); resolve(r); } }
+    function bad(e) { failures++; if (!done && failures >= started) { done = true; clearTimeout(hedge); reject(e); } }
+    readAndTranslate(jpg).then(ok, bad);
+    hedge = setTimeout(function () {
+      if (done) return;
+      started++; stats.hedges = (stats.hedges || 0) + 1;
+      readAndTranslate(jpg).then(function (r) { r.hedged = true; ok(r); }, bad);
+    }, 1300);
+  });
+}
+
 // Bağlantıyı sıcak tut: boşta kalınca ücretsiz bir model bilgisi isteği.
 var lastGemini = 0;
 setInterval(function () {
@@ -543,7 +558,7 @@ async function loop() {
     else if (shown && Date.now() < minUntil) { pendingSince = 0; emit({ peekEnd: true }); }
     else closeBox();
     if (out.rejected) log('REDDEDİLDİ (' + out.rejected + ')');
-    log((ms != null ? 'çeviri ' + ms + ' ms (Gemini ' + out.ms + ' ms' + (out.reused ? '' : ', YENİ BAĞLANTI') + '; ' + lastTiming + ')' : 'önbellek') + ': ' + (out.en || '(altyazı yok)'));
+    log((ms != null ? 'çeviri ' + ms + ' ms (Gemini ' + out.ms + ' ms' + (out.reused ? '' : ', YENİ BAĞLANTI') + (out.hedged ? ', YEDEK İSTEK KAZANDI' : '') + '; ' + lastTiming + ')' : 'önbellek') + ': ' + (out.en || '(altyazı yok)'));
   }
   while (running) {
     try {
@@ -604,7 +619,7 @@ async function loop() {
           else if (Date.now() > backoffUntil && CONFIG.geminiKey && inFlight < 3) {
             stats.calls++; inFlight++; lastGemini = Date.now();
             (function (seq, sig, jpg, tc, bbox) {
-              withTimeout(readAndTranslate(jpg), 8000, 'çeviri').then(function (out) {
+              withTimeout(hedgedTranslate(jpg), 8000, 'çeviri').then(function (out) {
                 var k = normEn(out.en);
                 if (out.en) prevEn = out.en;
                 if (k && cacheByEn[k]) out.tr = cacheByEn[k];          // aynı cümle hep aynı çeviri
