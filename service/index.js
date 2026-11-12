@@ -287,36 +287,58 @@ function signature(img, box, sh) {
   var per = (W / GX) * (Hh / GY);
   var hidden = new Uint8Array(GX * GY);
   for (k = 0; k < cells.length; k++) { cells[k] /= per; hidden[k] = unk[k] / per > 0.3 ? 1 : 0; }
-  // Yazı alanı: sütunları kümelere ayır (kelime araları birleşir, mini harita gibi uzak parçalar ayrılır),
-  // ortaya en yakın / en dolu kümeyi seç, sonra sadece o kümedeki satırlara bak.
-  var gapMax = Math.round(img.width * 0.03), runs = [], cur = null, lastX = -1e9;
-  for (x = 0; x < W; x++) {
-    if (cols[x] < 2) continue;
-    if (cur && x - lastX <= gapMax) { cur.x1 = x; cur.n += cols[x]; }
-    else { cur = { x0: x, x1: x, n: cols[x] }; runs.push(cur); }
-    lastX = x;
-  }
-  var mid = W / 2, best = null, bestScore = -1;
-  runs.forEach(function (rn) {
-    var dist = rn.x0 <= mid && rn.x1 >= mid ? 0 : Math.min(Math.abs(rn.x0 - mid), Math.abs(rn.x1 - mid));
-    var score = rn.n / (1 + dist / (W * 0.1));
-    if (score > bestScore) { bestScore = score; best = rn; }
-  });
+  // Yazı alanı: önce EN YOĞUN YATAY ŞERİDİ (yazı satırı/satırları) bul, sonra sadece o şeritte sütun kümelerine bak.
+  // Böylece çakıl, kaldırım gibi her yere yayılmış zemin gürültüsü alanı büyütmez.
+  var rowsAll = new Uint16Array(Hh);
+  for (k = 0; k < xs.length; k++) rowsAll[ys[k]]++;
+  var peak = 0, peakY = -1;
+  for (y = 0; y < Hh; y++) { var sm = rowsAll[y] + (y > 0 ? rowsAll[y - 1] : 0) + (y < Hh - 1 ? rowsAll[y + 1] : 0); if (sm > peak) { peak = sm; peakY = y; } }
   var bbox = null;
-  if (best) {
-    var rowsIn = new Uint16Array(Hh);
-    for (k = 0; k < xs.length; k++) if (xs[k] >= best.x0 && xs[k] <= best.x1) rowsIn[ys[k]]++;
-    var r0 = -1, r1 = -1;
-    for (y = 0; y < Hh; y++) if (rowsIn[y] >= 3) { if (r0 < 0) r0 = y; r1 = y; }
-    var inBox = 0;
-    for (k = 0; k < xs.length; k++) if (xs[k] >= best.x0 && xs[k] <= best.x1 && ys[k] >= r0 && ys[k] <= r1) inBox++;
-    if (r0 >= 0) bbox = {
-      x0: (box.x0 + best.x0) / img.width, x1: (box.x0 + best.x1 + 1) / img.width,
-      y0: (box.y0 + r0) / img.height, y1: (box.y0 + r1 + 1) / img.height,
-      fill: inBox / ((best.x1 - best.x0 + 1) * (r1 - r0 + 1)), share: total ? inBox / total : 0
-    };
+  if (peakY >= 0 && peak >= 6) {
+    // Zemin gürültüsü = satır sayımlarının ortancası; yazı satırı bunun belirgin üstünde olmalı.
+    var sorted = Array.from(rowsAll).sort(function (p, q) { return p - q; }), median = sorted[sorted.length >> 1];
+    var thr = Math.max(3, median * 1.6, rowsAll[peakY] * 0.15);
+    // Eşiği geçen satırlardan şeritler (içte en fazla 2 satır boşluk)
+    var bands = [], cb = null;
+    for (y = 0; y < Hh; y++) {
+      if (rowsAll[y] >= thr) { if (cb && y - cb.y1 <= 3) { cb.y1 = y; cb.sum += rowsAll[y]; } else { cb = { y0: y, y1: y, sum: rowsAll[y] }; bands.push(cb); } }
+    }
+    var main = null; bands.forEach(function (bd) { if (!main || bd.sum > main.sum) main = bd; });
+    var rb0 = main.y0, rb1 = main.y1, lineGap = Math.round(img.height * 0.03);
+    // İkinci satır: yakında (satır arası kadar), en az 3 satır kalınlığında ve yeterince dolu bir şerit
+    bands.forEach(function (bd) {
+      if (bd === main || bd.y1 - bd.y0 < 2 || bd.sum < main.sum * 0.12) return;
+      if (bd.y0 > rb1 && bd.y0 - rb1 <= lineGap) rb1 = bd.y1;
+      else if (bd.y1 < rb0 && rb0 - bd.y1 <= lineGap) rb0 = bd.y0;
+    });
+    rb0 = Math.max(0, rb0 - 2); rb1 = Math.min(Hh - 1, rb1 + 2);   // harf üst/alt uzantıları
+    var colsB = new Uint16Array(W), inBand = 0;
+    for (k = 0; k < xs.length; k++) if (ys[k] >= rb0 && ys[k] <= rb1) { colsB[xs[k]]++; inBand++; }
+    var gapMax = Math.round(img.width * 0.03), runs = [], cur = null, lastX = -1e9;
+    for (x = 0; x < W; x++) {
+      if (colsB[x] < 1) continue;
+      if (cur && x - lastX <= gapMax) { cur.x1 = x; cur.n += colsB[x]; }
+      else { cur = { x0: x, x1: x, n: colsB[x] }; runs.push(cur); }
+      lastX = x;
+    }
+    var mid = W / 2, best = null, bestScore = -1;
+    runs.forEach(function (rn) {
+      var dist = rn.x0 <= mid && rn.x1 >= mid ? 0 : Math.min(Math.abs(rn.x0 - mid), Math.abs(rn.x1 - mid));
+      var score = rn.n / (1 + dist / (W * 0.1));
+      if (score > bestScore) { bestScore = score; best = rn; }
+    });
+    if (best) {
+      var inBox = 0;
+      for (k = 0; k < xs.length; k++) if (xs[k] >= best.x0 && xs[k] <= best.x1 && ys[k] >= rb0 && ys[k] <= rb1) inBox++;
+      bbox = {
+        x0: (box.x0 + best.x0) / img.width, x1: (box.x0 + best.x1 + 1) / img.width,
+        y0: (box.y0 + rb0) / img.height, y1: (box.y0 + rb1 + 1) / img.height,
+        fill: inBox / ((best.x1 - best.x0 + 1) * (rb1 - rb0 + 1)), share: total ? inBox / total : 0,
+        bandShare: inBand ? inBox / inBand : 0      // yazı satırındaki piksellerin ne kadarı ortadaki yazı bloğunda
+      };
+    }
   }
-  return { cells: cells, hidden: hidden, density: total / N, bbox: bbox };
+  return { cells: cells, hidden: hidden, density: total / N, bbox: bbox, rows: rowsAll };
 }
 // Oransal fark: 0 = aynı yazı, 1 = tamamen farklı. Ölçüm (GTA V): aynı cümle ardışık karelerde 0,02–0,07;
 // farklı cümleler 0,33–0,87.
@@ -336,7 +358,7 @@ function looksLikeSubtitle(sig) {
   var h = (b.y1 - b.y0) * 540, w = (b.x1 - b.x0) * 960, cx = (b.x0 + b.x1) / 2;
   // Altyazı ekranın tam ortasındadır (ölçüm: hep 0,50); bu sıkı kural sayesinde desenli zeminde diğer sınırlar gevşek tutulabilir.
   return h >= 8 && h <= 48 && w >= 50 && w / h >= 2 && Math.abs(cx - 0.5) < 0.06 &&
-    b.fill >= 0.035 && b.fill <= 0.6 && b.share >= 0.6;
+    b.fill >= 0.035 && b.fill <= 0.6 && (b.share >= 0.6 || (b.bandShare >= 0.5 && sig.density < 0.03));
 }
 // Gemini'ye giden kırpım: sadece yazının olduğu alan (+pay), gri tonlu, küçük → Wi-Fi'da daha hızlı yükleme ve işlem.
 // Kutu içi parlatılır, bizim Türkçe yazı silinir; böylece model alttaki İngilizceyi okur.
