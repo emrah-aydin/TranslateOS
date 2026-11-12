@@ -27,23 +27,27 @@
   }
 
   // --- Altyazı kutusu ---
-  // Kutu İngilizce yazının kapladığı alanın tamamını örter; Türkçe daha uzunsa yanlara/yukarı büyür.
+  // Kutu SABİT bir yerde durur: her zaman ekranın tam ortasında ve aynı yükseklikte (kaymasın).
+  // Yalnızca genişliği/yüksekliği Türkçe metne göre değişir. GTA altyazısı hep ortada; iki satırlık İngilizcenin
+  // üstü ~%88,8, alt kenarı ~%95,5 yükseklikte (ölçüm).
+  var ABOVE_BOTTOM = 132;   // px: iki satırlık İngilizcenin de üstünde kalır
+  var COVER_BOTTOM = 36;    // px: İngilizcenin alt kenarının biraz altı; kutu yukarı doğru büyür
   function placeBox(bbox) {
     var padX = 26, padY = 12;
     var b = bbox || { x0: 0.3, x1: 0.7, y0: 0.9, y1: 0.95 };
-    var cx = (b.x0 + b.x1) / 2 * W;
-    subEl.style.left = cx + 'px';
+    subEl.style.left = (W / 2) + 'px';
     subEl.style.transform = 'translateX(-50%)';
     if (placement === 'above') {
-      // İngilizcenin hemen üstünde: ikisi birlikte görünür (senkron kontrolü için)
-      subEl.style.bottom = ((1 - b.y0) * H + 10) + 'px';
+      // İngilizcenin üstünde: ikisi birlikte görünür (senkron kontrolü için)
+      subEl.style.bottom = ABOVE_BOTTOM + 'px';
       subEl.style.minWidth = '0px';
       subEl.style.minHeight = '0px';
     } else {
-      // İngilizcenin yerine: kutu İngilizceyi tamamen örter
-      subEl.style.bottom = Math.max(0, (1 - b.y1) * H - padY) + 'px';
-      subEl.style.minWidth = ((b.x1 - b.x0) * W + 2 * padX) + 'px';
-      subEl.style.minHeight = ((b.y1 - b.y0) * H + 2 * padY) + 'px';
+      // İngilizcenin yerine: alt kenar sabit; kutu en az İngilizce kadar geniş ve yüksek
+      var halfW = Math.max(Math.abs(b.x0 - 0.5), Math.abs(b.x1 - 0.5)) * W;
+      subEl.style.bottom = COVER_BOTTOM + 'px';
+      subEl.style.minWidth = (2 * halfW + 2 * padX) + 'px';
+      subEl.style.minHeight = Math.max(0, (H - COVER_BOTTOM) - b.y0 * H + padY) + 'px';
     }
   }
   // Kutu koyuluğu: Türkçe varken %90; yeni İngilizceye "göz atarken" bir an %50 (servis net okuyabilsin).
@@ -163,7 +167,7 @@
       if (r.peekEnd && subEl.style.display !== 'none') { setAlpha(ALPHA_TEXT); reportRect(); }
       if (r.placement) placement = r.placement;
       if (r.tr) showSub(r.tr, r.bbox);
-      else if (r.bbox && !r.pending && subEl.style.display !== 'none') { lastBbox = r.bbox; placeBox(r.bbox); reportRect(); }  // kutu büyüdü
+      else if (r.bbox && !r.pending && placement === 'cover' && subEl.style.display !== 'none') { lastBbox = r.bbox; placeBox(r.bbox); reportRect(); }  // İngilizce büyüdü: örtü büyüsün
     });
   }
   subscribe();
