@@ -2,5 +2,9 @@
   "name": "com.translateos.app.service",
   "version": "0.1.0",
   "main": "index.js",
-  "dependencies": { "ws": "^8.18.0", "jpeg-js": "^0.4.4" }
+  "dependencies": {
+    "@jsquash/jpeg": "^1.6.0",
+    "jpeg-js": "^0.4.4",
+    "ws": "^8.18.0"
+  }
 }
