@@ -646,7 +646,7 @@ setInterval(function () {
   memoryDirty = false;
   fs.writeFile(MEMORY_FILE, JSON.stringify(cacheByEn), function (e) { if (e) log('hafıza yazılamadı: ' + e.message); });
 }, 5000);
-var reqSeq = 0, inFlight = 0, lastTiming = '', retried = {};
+var reqSeq = 0, inFlight = 0, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0;
 var shade = null, rebase = false, peekAckAt = 0;   // ekrandaki Türkçe kutunun yeri (kare oranı) — uygulama bildirir
 
 // Yakalama: iki istek üst üste (TV her biri için ~340 ms harcıyor); en son kare işlenir.
@@ -758,18 +758,14 @@ async function loop() {
           // Altyazı belirirken solup parlar: uçuşta aynı yazı için istek varsa yenisini gönderme.
           // (Referans güncellenmez: çeviri dönünce yazı hâlâ farklıysa yeni istek gider; arka arkaya gelen cümle kaçmaz.)
           if (inFlight > 0 && sigDiff(sig, lastReqSig) < 0.25) continue;
-          if (placement === 'cover' && boxOpen && shown && sigDiff(sig, shownSig) > CHANGED) {
-            // Kutu altındaki yeni İngilizce soluk okunur ve bozulabilir. Eski Türkçe ekranda KALIR; kutu sadece bir an
-            // yarı saydam olur (göz atma), ondan sonraki net kareyle okunur. Ekranda hiç boş siyah kutu olmaz.
-            peekSince = Date.now(); peekAckAt = 0; pendingSince = Date.now();
-            emit({ peek: true });
-            lastSentSig = sig;
-            continue;
-          }
+          // Kutu altındaki yeni İngilizce önce kutu tam koyuyken okunur (parlatılarak). Bu okuma başarısız olursa
+          // kutu bir an %75 koyuluğa iner (göz atma) ve sonraki net kareyle tekrar okunur.
+          var underBox = placement === 'cover' && boxOpen && shown && sigDiff(sig, shownSig) > CHANGED;
           lastSentSig = sig; lastReqSig = sig;
           debugFrame(fr.buf, 'ISTEK', true);
           event({ tur: 'altyazı_görüldü', yakalama_ms: fr.capMs, kutu: boxOpen, yerlesim: placement });
           var seq = ++reqSeq, hit = null;
+          if (underBox && !peekSince && Date.now() - lastPeekAt > 3000) underBoxReq[seq] = true;   // göz atmadan sonra tekrar döngüye girmesin
           for (var c = 0; c < sigCache.length; c++) if (sigDiff(sig, sigCache[c].sig) < SAME) { hit = sigCache[c].out; break; }
           // (Not: şekil benzerliğiyle 'aynı cümle' tahmini kısa satırlarda yanlış eşleştirdi; kaldırıldı. Doğruluk önce.)
           lastTiming = 'yakalama ' + fr.capMs + ' ms, çözme ' + (tSig - tDec) + ' ms, imza ' + (Date.now() - tSig) + ' ms';
@@ -797,6 +793,15 @@ async function loop() {
                     event({ tur: 'farklı_çeviri_bilgi', not: 'hafızada başka sürüm var; ekrandaki değiştirilmedi', ekranda: earlyTr, hafizada: cacheByEn[k2], en: out.en });
                   sigCache.unshift({ sig: sig, out: { en: out.en || earlyEn, tr: earlyTr } }); if (sigCache.length > 300) sigCache.pop();
                   log('tamamlandı ' + (Date.now() - tc) + ' ms (' + earlySrc + '): ' + (out.en || earlyEn || '-'));
+                  return;
+                }
+                if (!out.en && underBoxReq[seq] && boxOpen) {
+                  // Koyu kutunun altından okunamadı: kutu bir an açılsın, net kareyle tekrar okunsun
+                  peekSince = Date.now(); peekAckAt = 0; pendingSince = Date.now(); lastPeekAt = Date.now();
+                  emit({ peek: true });
+                  if (seq === reqSeq) lastSentSig = null;
+                  log('kutu altından okunamadı, göz atılıyor');
+                  event({ tur: 'göz_atma', sebep: 'kutu altından okunamadı' });
                   return;
                 }
                 if (!out.en && !retried[seq] && looksLikeSubtitle(sig) && sig.density > 0.005) {

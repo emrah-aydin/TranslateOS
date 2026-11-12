@@ -44,11 +44,13 @@
       subEl.style.minWidth = '0px';
       subEl.style.minHeight = '0px';
     } else {
-      // İngilizcenin yerine: alt kenar sabit; kutu en az İngilizce kadar geniş ve yüksek
+      // İngilizcenin yerine: alt kenar sabit; kutu İngilizceden her yönde belirgin biçimde büyük (uçlardaki
+      // soluk harfler ve noktalama da kalsın diye ekstra pay)
+      var coverPadX = 48 + W * 0.02, coverPadY = 18;
       var halfW = Math.max(Math.abs(b.x0 - 0.5), Math.abs(b.x1 - 0.5)) * W;
-      subEl.style.bottom = COVER_BOTTOM + 'px';
-      subEl.style.minWidth = (2 * halfW + 2 * padX) + 'px';
-      subEl.style.minHeight = Math.max(0, (H - COVER_BOTTOM) - b.y0 * H + padY) + 'px';
+      subEl.style.bottom = Math.max(0, COVER_BOTTOM - 10) + 'px';
+      subEl.style.minWidth = (2 * halfW + 2 * coverPadX) + 'px';
+      subEl.style.minHeight = Math.max(0, (H - COVER_BOTTOM + 10) - b.y0 * H + coverPadY) + 'px';
     }
   }
   // Kutu koyuluğu: Türkçe varken %90; yeni İngilizceye "göz atarken" bir an %50 (servis net okuyabilsin).
