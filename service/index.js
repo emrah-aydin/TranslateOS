@@ -214,7 +214,7 @@ function shadePx(img, sh) {
   if (!sh) return null;
   var alpha = sh.alpha || BOX_ALPHA;
   return { x0: Math.floor(sh.x0 * img.width), y0: Math.floor(sh.y0 * img.height), x1: Math.ceil(sh.x1 * img.width), y1: Math.ceil(sh.y1 * img.height),
-    gain: 1 / (1 - alpha), ownText: sh.hasText !== false };
+    gain: 1 / (1 - alpha), ownText: sh.hasText !== false, ownThr: Math.max(OWN_TEXT_LUM * 0.8, 255 * (1 - alpha) + 70) };
 }
 // Bölgeyi 64x8 hücreye böler, hücrelerdeki yazı piksel oranını ve yazının kapladığı alanı (bbox) döndürür.
 // Kutu varken ve yokken AYNI ölçü çıksın diye: kutu altındaki pikseller önce normal parlaklığına geri getirilir
@@ -231,7 +231,7 @@ function signature(img, box, sh) {
       var r = d[i], g = d[i + 1], bb = d[i + 2], l = (r * 3 + g * 6 + bb) / 10;
       var c = Math.max(r, g, bb) - Math.min(r, g, bb);
       if (sp && px >= sp.x0 && px < sp.x1 && py >= sp.y0 && py < sp.y1) {
-        if (sp.ownText && l > OWN_TEXT_LUM * 0.8) { own[k] = 1; L[k] = -1; continue; }
+        if (sp.ownText && l > sp.ownThr) { own[k] = 1; L[k] = -1; continue; }
         l *= sp.gain; c *= sp.gain;
       }
       L[k] = l; C[k] = c;
@@ -251,19 +251,22 @@ function signature(img, box, sh) {
   var unk = new Float32Array(GX * GY);
   for (y = 0; y < Hh; y++) { var gyu = Math.min(GY - 1, (y * GY / Hh) | 0); for (x = 0; x < W; x++) if (L[y * W + x] < 0) unk[gyu * GX + Math.min(GX - 1, (x * GX / W) | 0)]++; }
   var cols = new Uint16Array(W), xs = [], ys = [];
-  var NB = [[-2, 0], [2, 0], [0, -2], [0, 2], [-2, 2], [2, -2]];
+  // İnce çizgi testi: altyazı harfleri 1–4 px kalınlığında, İKİ yanında koyu gölge olan çizgilerdir.
+  // Güneşli kaldırım, beton, gökyüzü gibi geniş açık alanlar ve tek taraflı kenarlar sayılmaz.
+  function darkAt(xx, yy, ref) { if (xx < 0 || xx >= W || yy < 0 || yy >= Hh) return false; var q = L[yy * W + xx]; return q >= 0 && q < ref - 100; }
   for (y = 0; y < Hh; y++) {
     var gy = Math.min(GY - 1, (y * GY / Hh) | 0);
     for (x = 0; x < W; x++) {
       k = y * W + x; var lv = L[k];
       if (lv < 175 || C[k] > 60) continue;              // beyaz ve renksiz değil
-      var edge = false;
-      for (var n = 0; n < NB.length && !edge; n++) {
-        var x2 = x + NB[n][0], y2 = y + NB[n][1];
-        if (x2 < 0 || x2 >= W || y2 < 0 || y2 >= Hh) continue;
-        var l2 = L[y2 * W + x2]; if (l2 >= 0 && l2 < lv - 115) edge = true;   // yakınında koyu gölge
+      var lD = false, rD = false, uD = false, dD = false;
+      for (var t = 1; t <= 4; t++) {
+        if (!lD && darkAt(x - t, y, lv)) lD = true;
+        if (!rD && darkAt(x + t, y, lv)) rD = true;
+        if (!uD && darkAt(x, y - t, lv)) uD = true;
+        if (!dD && darkAt(x, y + t, lv)) dD = true;
       }
-      if (!edge) continue;
+      if (!((lD && rD) || (uD && dD))) continue;
       cells[gy * GX + Math.min(GX - 1, (x * GX / W) | 0)]++; total++; cols[x]++;
       if (xs.length < 20000) { xs.push(x); ys.push(y); }
     }
@@ -292,9 +295,12 @@ function signature(img, box, sh) {
     for (k = 0; k < xs.length; k++) if (xs[k] >= best.x0 && xs[k] <= best.x1) rowsIn[ys[k]]++;
     var r0 = -1, r1 = -1;
     for (y = 0; y < Hh; y++) if (rowsIn[y] >= 3) { if (r0 < 0) r0 = y; r1 = y; }
+    var inBox = 0;
+    for (k = 0; k < xs.length; k++) if (xs[k] >= best.x0 && xs[k] <= best.x1 && ys[k] >= r0 && ys[k] <= r1) inBox++;
     if (r0 >= 0) bbox = {
       x0: (box.x0 + best.x0) / img.width, x1: (box.x0 + best.x1 + 1) / img.width,
-      y0: (box.y0 + r0) / img.height, y1: (box.y0 + r1 + 1) / img.height
+      y0: (box.y0 + r0) / img.height, y1: (box.y0 + r1 + 1) / img.height,
+      fill: inBox / ((best.x1 - best.x0 + 1) * (r1 - r0 + 1)), share: total ? inBox / total : 0
     };
   }
   return { cells: cells, hidden: hidden, density: total / N, bbox: bbox };
@@ -313,9 +319,10 @@ function sigDiff(a, b) {
 var CHANGED = 0.2, SAME = 0.12, STILL_SAME = 0.35;
 // Kutuyu önceden açmak için yeterince "altyazı gibi" mi: yoğun, ortalanmış, satır yüksekliğinde.
 function looksLikeSubtitle(sig) {
-  var b = sig.bbox; if (!b || sig.density < 0.006) return false;
+  var b = sig.bbox; if (!b || sig.density < 0.004) return false;
   var h = (b.y1 - b.y0) * 540, w = (b.x1 - b.x0) * 960, cx = (b.x0 + b.x1) / 2;
-  return h >= 10 && h <= 60 && w >= 60 && Math.abs(cx - 0.5) < 0.2;
+  return h >= 8 && h <= 48 && w >= 50 && w / h >= 3 && Math.abs(cx - 0.5) < 0.15 &&
+    b.fill >= 0.06 && b.fill <= 0.6 && b.share >= 0.6;      // yazının çoğu tek bir ortalanmış satır bloğunda
 }
 // Gemini'ye giden kırpım: kutu içi parlatılır, bizim Türkçe yazı silinir; böylece model alttaki İngilizceyi okur.
 function cropForGemini(img, box, sh) {
@@ -325,7 +332,7 @@ function cropForGemini(img, box, sh) {
     for (var x = 0; x < box.w; x++) {
       var px = box.x0 + x, i = (py * img.width + px) * 4, o = (y * box.w + x) * 4;
       if (sp && px >= sp.x0 && px < sp.x1 && py >= sp.y0 && py < sp.y1) {
-        if (sp.ownText && lum(d, i) > OWN_TEXT_LUM) { out[o] = out[o + 1] = out[o + 2] = 0; }
+        if (sp.ownText && lum(d, i) > sp.ownThr) { out[o] = out[o + 1] = out[o + 2] = 0; }
         else { out[o] = Math.min(255, d[i] * sp.gain); out[o + 1] = Math.min(255, d[i + 1] * sp.gain); out[o + 2] = Math.min(255, d[i + 2] * sp.gain); }
       } else { out[o] = d[i]; out[o + 1] = d[i + 1]; out[o + 2] = d[i + 2]; }
       out[o + 3] = 255;
@@ -358,8 +365,15 @@ var COMMON = ('the a an and or but to of in on at for with you your yours i me m
   'hey hi hello oh yeah well hold on over from into about some any one two more much good bad big little ain\'t don\'t i\'m ' +
   'it\'s that\'s you\'re we\'re they\'re can\'t won\'t didn\'t isn\'t wasn\'t i\'ll you\'ll we\'ll gotta').split(' ');
 var COMMON_SET = {}; COMMON.forEach(function (w) { COMMON_SET[w] = 1; });
+COMMON.concat(('get got go going gone come came take took make made know knew think thought see saw look want need like love ' +
+  'give gave tell told say said call called work help talk walk drive car money time day night guy guys man men woman people ' +
+  'friend family home house place way thing things life world job deal fine sure wait please thanks sorry fuck mad crazy ' +
+  'dead kill killed shoot gun cops police boss kid kids son mother father brother sister wife name new old little long ' +
+  'first last next ever never always still again only even also because about after before around through while until').split(' '))
+  .forEach(function (w) { COMMON_SET[w] = 1; });
 function looksEnglish(t) {
-  var words = String(t).toLowerCase().replace(/[^a-z' ]+/g, ' ').split(/\s+/).filter(Boolean);
+  var words = String(t).toLowerCase().replace(/[^a-z' ]+/g, ' ').split(/\s+/).filter(Boolean)
+    .map(function (w) { return w.replace(/('(ve|re|ll|s|d|m|t)|n't|in')$/, '').replace(/'/g, ''); });
   if (!words.length) return false;
   var common = words.filter(function (w) { return COMMON_SET[w]; }).length;
   var weird = words.filter(function (w) { return w.length > 3 && !/[aeiouy]/.test(w); }).length;
@@ -514,6 +528,7 @@ async function loop() {
     // Daha yeni bir istek varsa: ekrandaki yazı hâlâ aynıysa (gürültüyle yeniden istenmişse) yine göster.
     if (seq !== reqSeq && sigDiff(sig, lastReqSig) > STILL_SAME) return;
     if (out.tr) { shown = out.tr; shownSig = sig; pendingSince = 0; minUntil = Date.now() + readTime(out.tr); openBox({ en: out.en, tr: out.tr, bbox: bbox || sig.bbox }); }
+    else if (shown && Date.now() < minUntil) { pendingSince = 0; emit({ peekEnd: true }); }
     else closeBox();
     if (out.rejected) log('REDDEDİLDİ (' + out.rejected + ')');
     log((ms != null ? 'çeviri ' + ms + ' ms (Gemini ' + out.ms + ' ms' + (out.reused ? '' : ', YENİ BAĞLANTI') + '; ' + lastTiming + ')' : 'önbellek') + ': ' + (out.en || '(altyazı yok)'));
@@ -538,9 +553,9 @@ async function loop() {
         rebase = false;
         if (sigDiff(sig, lastSentSig) < 0.5) { lastSentSig = sig; if (shown) shownSig = sig; continue; }
       }
-      var hasText = sig.density > 0.003;
+      var hasText = looksLikeSubtitle(sig);   // sadece ortalanmış, ince çizgili yazı satırı altyazı sayılır
       debugFrame(fr.buf, (boxOpen ? (shown ? 'TR' : 'BOS-KUTU') : 'kutu-yok') + '_' + (hasText ? 'yazi' : 'bos'));
-      if (hasText && looksLikeSubtitle(sig)) growBox(sig.bbox);
+      if (hasText) growBox(sig.bbox);
       if (!hasText) {
         emptyFrames++;
         if (emptyFrames >= 2) {
@@ -555,20 +570,17 @@ async function loop() {
           if (!ready && Date.now() - peekSince < 2000) continue;          // göz atma karesini bekle
           peekSince = 0; lastSentSig = null;                                  // bu kareyle istek gönderilsin
         }
-        if (pendingSince && Date.now() - pendingSince > 3500 && !shown) closeBox();   // boş kutu takılı kalmasın
+        if (pendingSince && Date.now() - pendingSince > 3500) { pendingSince = 0; if (shown) emit({ peekEnd: true }); else closeBox(); }
         if (sigDiff(sig, lastSentSig) > CHANGED) {   // yeni / farklı yazı
           // Altyazı belirirken solup parlar: uçuşta aynı yazı için istek varsa yenisini gönderme.
           if (inFlight > 0 && sigDiff(sig, lastReqSig) < 0.5) { lastSentSig = sig; continue; }
           if (boxOpen && shown && sigDiff(sig, shownSig) > CHANGED) {
-            // Kutu altındaki yeni İngilizce soluk okunur ve bozulabilir. Kutu bir an yarı saydam olur (göz atma),
-            // ondan sonraki net kareyle okunur. Eski Türkçe hemen kalkar.
-            shown = ''; shownSig = null; pendingSince = Date.now(); peekSince = Date.now(); peekAckAt = 0;
-            emit({ pending: true, peek: true });
+            // Kutu altındaki yeni İngilizce soluk okunur ve bozulabilir. Eski Türkçe ekranda KALIR; kutu sadece bir an
+            // yarı saydam olur (göz atma), ondan sonraki net kareyle okunur. Ekranda hiç boş siyah kutu olmaz.
+            peekSince = Date.now(); peekAckAt = 0; pendingSince = Date.now();
+            emit({ peek: true });
             lastSentSig = sig;
             continue;
-          } else if (!boxOpen && looksLikeSubtitle(sig)) {
-            // İngilizce göründüğü an kutuyu boş aç: Türkçe gelene kadar İngilizce görünmesin.
-            pendingSince = Date.now(); openBox({ pending: true, bbox: sig.bbox });
           }
           lastSentSig = sig; lastReqSig = sig;
           debugFrame(fr.buf, 'ISTEK', true);
@@ -634,4 +646,4 @@ service.register('showInput', function (m) {
   var id = 'com.webos.app.hdmi' + ((m.payload && m.payload.port) || 1);
   lunaCall('luna://com.webos.applicationManager/launch', { id: id }).then(function (r) { m.respond(r || { returnValue: true }); });
 });
-module.exports = { _test: { regionBox: regionBox, signature: signature, sigDiff: sigDiff, cropForGemini: cropForGemini, decodeJpeg: decodeJpeg, initDecoder: initDecoder, EN_REGION: EN_REGION } };
+module.exports = { _test: { looksEnglish: looksEnglish, looksLikeSubtitle: looksLikeSubtitle, regionBox: regionBox, signature: signature, sigDiff: sigDiff, cropForGemini: cropForGemini, decodeJpeg: decodeJpeg, initDecoder: initDecoder, EN_REGION: EN_REGION } };

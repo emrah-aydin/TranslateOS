@@ -150,6 +150,8 @@
       if (r.status === 'nokey') status('Gemini anahtarı yok', 0);
       if (r.clear) hideSub();
       if (r.pending) pendingSub(r.bbox, r.peek);
+      else if (r.peek && subEl.style.display !== 'none') { setAlpha(ALPHA_PEEK); reportRect(true); }   // eski Türkçe kalır, kutu bir an açılır
+      if (r.peekEnd && subEl.style.display !== 'none') { setAlpha(ALPHA_TEXT); reportRect(); }
       if (r.tr) showSub(r.tr, r.bbox);
       else if (r.bbox && !r.pending && subEl.style.display !== 'none') { lastBbox = r.bbox; placeBox(r.bbox); reportRect(); }  // kutu büyüdü
     });
