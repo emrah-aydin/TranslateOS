@@ -30,7 +30,7 @@
   // Kutu SABİT bir yerde durur: her zaman ekranın tam ortasında ve aynı yükseklikte (kaymasın).
   // Yalnızca genişliği/yüksekliği Türkçe metne göre değişir. GTA altyazısı hep ortada; iki satırlık İngilizcenin
   // üstü ~%88,8, alt kenarı ~%95,5 yükseklikte (ölçüm).
-  var ABOVE_BOTTOM = 132;   // px: iki satırlık İngilizcenin de üstünde kalır
+  var ABOVE_BOTTOM = 172;   // px: iki satırlık İngilizcenin de üstünde kalır (ölçüm: 2 satırın üstü ~%86)
   var COVER_BOTTOM = 36;    // px: İngilizcenin alt kenarının biraz altı; kutu yukarı doğru büyür
   function placeBox(bbox) {
     var padX = 26, padY = 12;
@@ -38,8 +38,9 @@
     subEl.style.left = (W / 2) + 'px';
     subEl.style.transform = 'translateX(-50%)';
     if (placement === 'above') {
-      // İngilizcenin üstünde: ikisi birlikte görünür (senkron kontrolü için)
-      subEl.style.bottom = ABOVE_BOTTOM + 'px';
+      // İngilizcenin üstünde: ikisi birlikte görünür (senkron kontrolü için). Normalde sabit yükseklik;
+      // İngilizce daha yukarıdan başlıyorsa (3 satır gibi) kutu o cümle için yukarı çıkar, İngilizceye asla binmez.
+      subEl.style.bottom = Math.max(ABOVE_BOTTOM, Math.round((1 - b.y0) * H + 14)) + 'px';
       subEl.style.minWidth = '0px';
       subEl.style.minHeight = '0px';
     } else {
@@ -167,7 +168,10 @@
       if (r.peekEnd && subEl.style.display !== 'none') { setAlpha(ALPHA_TEXT); reportRect(); }
       if (r.placement) placement = r.placement;
       if (r.tr) showSub(r.tr, r.bbox);
-      else if (r.bbox && !r.pending && placement === 'cover' && subEl.style.display !== 'none') { lastBbox = r.bbox; placeBox(r.bbox); reportRect(); }  // İngilizce büyüdü: örtü büyüsün
+      else if (r.bbox && !r.pending && subEl.style.display !== 'none') {
+        // İngilizce büyüdü (ör. yeni satır geldi): örtü büyüsün / üstteki kutu gerekirse yukarı çıksın
+        if (placement === 'cover' || r.bbox.y0 < (lastBbox ? lastBbox.y0 : 1)) { lastBbox = r.bbox; placeBox(r.bbox); reportRect(); }
+      }
     });
   }
   subscribe();
