@@ -6,14 +6,29 @@ Bilgisayar, kamera, capture card ya da başka bir cihaz gerekmez. PS5 HDMI ile T
 
 > GTA 5 Türkçe altyazı · GTA 6 Türkçe yama · PS5 Türkçe çeviri · LG TV oyun çevirmeni · yapay zekâ ile anlık altyazı
 
-![GTA 5'te TranslateOS ile Türkçe altyazı](docs/screenshots/gta5-turkce-altyazi-1.jpg)
+![GTA 5'te TranslateOS ile Türkçe altyazı: tekne görevi](docs/screenshots/gta5-turkce-altyazi-tekne.jpg)
 
 <p align="center">
-  <img src="docs/screenshots/gta5-turkce-altyazi-2.jpg" width="49%" alt="GTA 5 Türkçe altyazı: telefon görüşmesi">
-  <img src="docs/screenshots/gta5-turkce-altyazi-3.jpg" width="49%" alt="GTA 5 Türkçe altyazı: görev konuşması">
+  <img src="docs/screenshots/gta5-turkce-altyazi-otoyol.jpg" width="49%" alt="GTA 5 Türkçe altyazı: otoyolda takip">
+  <img src="docs/screenshots/gta5-turkce-altyazi-kopru.jpg" width="49%" alt="GTA 5 Türkçe altyazı: köprüde konuşma">
+</p>
+<p align="center">
+  <img src="docs/screenshots/gta5-turkce-altyazi-sokak.jpg" width="49%" alt="GTA 5 Türkçe altyazı: sokakta görev">
+  <img src="docs/screenshots/gta5-turkce-altyazi-1.jpg" width="49%" alt="GTA 5 Türkçe altyazı: gece telefon görüşmesi">
 </p>
 
-*Ekran görüntüleri doğrudan TV'den alınmıştır: PS5'te GTA V, LG QNED TV, TranslateOS açık.*
+*Ekran görüntüleri doğrudan TV'den alınmıştır: PS5'te GTA V, LG QNED TV, TranslateOS açık. Türkçe altyazı, oyunun İngilizce altyazısının tam üstüne yazılıyor.*
+
+### Canlı test sonucu
+
+GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi:
+
+| Ölçüm | Sonuç |
+|---|---|
+| Ekrana gelen altyazı | 47 |
+| Türkçesi gösterilen | **47 / 47** |
+| Boş siyah kutu / hata | 0 / 0 |
+| Çeviri süresi (ortanca) | 1,3 sn |
 
 ---
 
@@ -23,7 +38,9 @@ Bilgisayar, kamera, capture card ya da başka bir cihaz gerekmez. PS5 HDMI ile T
 - 🧠 **Yapay zekâ ile okuma ve çeviri.** Altyazı bölgesi Google Gemini'ye gider; model tek istekte hem okur hem çevirir.
 - 🔥 **Sansürsüz, doğal çeviri.** Sokak ağzı, argo ve küfür yumuşatılmadan, oyundaki sertliğiyle Türkçeye aktarılır. Çeviri yalnızca Türkçedir.
 - ⚡ **Hızlı.** Altyazı göründükten yaklaşık 1–2 saniye sonra Türkçesi gelir. Aynı cümle ikinci kez çevrilmez, hafızadan gelir.
-- 🕶️ **Sadece Türkçe görünür.** Türkçe altyazı İngilizcenin üstüne oturur. Yeni cümle geldiğinde kutu bir an yarı saydam olup yeni İngilizceyi okur, sonra Türkçesini yazar.
+- 🕶️ **Sadece Türkçe görünür.** Türkçe altyazı İngilizcenin üstüne oturur. Yeni cümle geldiğinde eski Türkçe yerinde kalır; kutu bir an hafif açılıp yeni İngilizceyi okur, sonra yeni Türkçe yerine geçer. Boş siyah kutu çıkmaz.
+- 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe altyazılar biraz geriden ama sırayla, hiçbiri atlanmadan gelir.
+- ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
 - 📺 **Kumanda ile kontrol.** Kırmızı: altyazı aç/kapat · Yeşil: menü · 1–4: HDMI girişi · Geri: çıkış.
 - 😴 **TV uyumaz.** Oyun sırasında ekran koruyucu ve uyku modu devreye girmez.

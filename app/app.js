@@ -111,6 +111,7 @@
       document.getElementById('m-state').textContent = r.running ? 'Çalışıyor' : 'Durdu';
       document.getElementById('m-calls').textContent = r.calls || 0;
       document.getElementById('m-hits').textContent = r.cacheHits || 0;
+      document.getElementById('m-mem').textContent = r.memory || 0;
     });
     var m = document.getElementById('m-sub');
     m.textContent = enabled ? 'Açık' : 'Kapalı';

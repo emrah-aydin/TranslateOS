@@ -474,6 +474,22 @@ async function bench() {
 // Görüntü sürekli alınır. Altyazı bölgesi değişince hemen Gemini'ye gider (sonucu beklemeden yakalama sürer).
 // Daha yeni bir istek varken gelen eski sonuç gösterilmez. Gösterilen Türkçe, İngilizce kalkınca/değişince hemen kalkar.
 var sigCache = [];    // [{sig, out}] — benzer görüntü → aynı sonuç (API'ye tekrar gitmez)
+var recent = [];      // [{sig, out, at}] son 6 sn'deki sonuçlar: aynı yerde, benzer şekildeki yazı = aynı cümle
+function iou(a, b) {
+  if (!a || !b) return 0;
+  var ix = Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)), iy = Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  var inter = ix * iy, uni = (a.x1 - a.x0) * (a.y1 - a.y0) + (b.x1 - b.x0) * (b.y1 - b.y0) - inter;
+  return uni > 0 ? inter / uni : 0;
+}
+function recentHit(sig) {
+  var now = Date.now();
+  recent = recent.filter(function (r) { return now - r.at < 6000; });
+  for (var i = 0; i < recent.length; i++) {
+    var r = recent[i];
+    if (r.out.tr && iou(sig.bbox, r.sig.bbox) > 0.85 && sigDiff(sig, r.sig) < 0.35) return r.out;
+  }
+  return null;
+}
 var cacheByEn = {};    // aynı İngilizce cümle → aynı çeviri (kalıcı: memory.json)
 
 // --- Kalıcı cümle hafızası ---
@@ -551,10 +567,20 @@ async function loop() {
       boxBbox = union(boxBbox, b); emit({ bbox: boxBbox });
     }
   }
+  var latestShownSeq = 0;
   function show(seq, sig, out, ms, bbox) {
-    // Daha yeni bir istek varsa: ekrandaki yazı hâlâ aynıysa (gürültüyle yeniden istenmişse) yine göster.
-    if (seq !== reqSeq && sigDiff(sig, lastReqSig) > STILL_SAME) return;
-    if (out.tr) { shown = out.tr; shownSig = sig; pendingSince = 0; minUntil = Date.now() + readTime(out.tr); openBox({ en: out.en, tr: out.tr, bbox: bbox || sig.bbox }); }
+    // Hızlı konuşmada çeviri, ekranda bir sonraki cümle belirdikten sonra dönebilir. Böyle geç gelen çeviri ATILMAZ:
+    // gösterilir, sıradaki cümlenin çevirisi gelince onun yerini alır (altyazı ~1 sn geriden ama eksiksiz akar).
+    // Atlanan tek durum: daha yeni bir cümlenin çevirisi zaten gösterilmişse.
+    if (seq < latestShownSeq) { log('atlandı (daha yenisi gösterildi): ' + (out.en || '-')); return; }
+    var stale = seq !== reqSeq;
+    if (stale && !out.tr) return;                         // eski istekten boş sonuç: ekrandakine dokunma
+    latestShownSeq = seq;
+    if (out.tr) {
+      shown = out.tr; shownSig = stale ? null : sig; pendingSince = 0; minUntil = Date.now() + readTime(out.tr);
+      openBox({ en: out.en, tr: out.tr, bbox: bbox || sig.bbox });
+      if (stale) log('geç gelen çeviri gösterildi (sıradaki yolda)');
+    }
     else if (shown && Date.now() < minUntil) { pendingSince = 0; emit({ peekEnd: true }); }
     else closeBox();
     if (out.rejected) log('REDDEDİLDİ (' + out.rejected + ')');
@@ -614,6 +640,7 @@ async function loop() {
           debugFrame(fr.buf, 'ISTEK', true);
           var seq = ++reqSeq, hit = null;
           for (var c = 0; c < sigCache.length; c++) if (sigDiff(sig, sigCache[c].sig) < SAME) { hit = sigCache[c].out; break; }
+          if (!hit) hit = recentHit(sig);
           lastTiming = 'yakalama ' + fr.capMs + ' ms, çözme ' + (tSig - tDec) + ' ms, imza ' + (Date.now() - tSig) + ' ms';
           if (hit) { stats.cacheHits++; show(seq, sig, hit, null, sig.bbox); }
           else if (Date.now() > backoffUntil && CONFIG.geminiKey && inFlight < 3) {
@@ -625,6 +652,7 @@ async function loop() {
                 if (k && cacheByEn[k]) out.tr = cacheByEn[k];          // aynı cümle hep aynı çeviri
                 if (k) remember(out.en, out.tr);
                 sigCache.unshift({ sig: sig, out: out }); if (sigCache.length > 300) sigCache.pop();   // boş sonuç da: aynı gürültü için tekrar sorma
+                recent.push({ sig: sig, out: out, at: Date.now() });
                 show(seq, sig, out, Date.now() - tc, bbox);
               }).catch(function (e) {
                 stats.errors++; log('çeviri hatası: ' + e.message);
@@ -668,7 +696,7 @@ service.register('boxRect', function (m) {
   if (p.peek) peekAckAt = Date.now();
   m.respond({ returnValue: true });
 });
-service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running }, stats)); });
+service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length }, stats)); });
 service.register('showInput', function (m) {
   // Uygulamadan çıkarken TV'nin kendi HDMI ekranına güvenli dönüş.
   var id = 'com.webos.app.hdmi' + ((m.payload && m.payload.port) || 1);
