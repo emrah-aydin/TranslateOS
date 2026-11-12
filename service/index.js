@@ -194,6 +194,9 @@ function regionBox(img, R) {
   return { x0: x0, y0: y0, w: x1 - x0, h: y1 - y0 };
 }
 function lum(d, i) { return (d[i] * 3 + d[i + 1] * 6 + d[i + 2]) / 10; }
+function lumOf(c) { return (c[0] * 3 + c[1] * 6 + c[2]) / 10; }
+// Kutu altındaki gerçek renk: gözlenen = alfa·kutu + (1−alfa)·oyun  →  oyun = (gözlenen − alfa·kutu) / (1−alfa)
+function unmix(v, boxC, sp) { return Math.max(0, Math.min(255, (v - sp.alpha * boxC) * sp.gain)); }
 function neighborOffsets(rowBytes) { return [-8, 8, -2 * rowBytes, 2 * rowBytes, -8 + 2 * rowBytes, 8 - 2 * rowBytes]; }
 function farOffsets(rowBytes) {
   var o = [];
@@ -227,7 +230,8 @@ function shadePx(img, sh) {
   if (!sh) return null;
   var alpha = sh.alpha || BOX_ALPHA;
   return { x0: Math.floor(sh.x0 * img.width), y0: Math.floor(sh.y0 * img.height), x1: Math.ceil(sh.x1 * img.width), y1: Math.ceil(sh.y1 * img.height),
-    gain: 1 / (1 - alpha), ownText: sh.hasText !== false, ownThr: Math.max(OWN_TEXT_LUM * 0.8, 255 * (1 - alpha) + 70) };
+    gain: 1 / (1 - alpha), alpha: alpha, ownText: sh.hasText !== false, bg: sh.bg || [0, 0, 0],
+    ownThr: Math.max(OWN_TEXT_LUM * 0.8, 255 * (1 - alpha) + alpha * lumOf(sh.bg || [0, 0, 0]) + 70) };
 }
 // Bölgeyi 64x8 hücreye böler, hücrelerdeki yazı piksel oranını ve yazının kapladığı alanı (bbox) döndürür.
 // Kutu varken ve yokken AYNI ölçü çıksın diye: kutu altındaki pikseller önce normal parlaklığına geri getirilir
@@ -245,7 +249,8 @@ function signature(img, box, sh) {
       var c = Math.max(r, g, bb) - Math.min(r, g, bb);
       if (sp && px >= sp.x0 && px < sp.x1 && py >= sp.y0 && py < sp.y1) {
         if (sp.ownText && l > sp.ownThr) { own[k] = 1; L[k] = -1; continue; }
-        l *= sp.gain; c *= sp.gain;
+        var ur = unmix(r, sp.bg[0], sp), ug = unmix(g, sp.bg[1], sp), ub = unmix(bb, sp.bg[2], sp);
+        l = (ur * 3 + ug * 6 + ub) / 10; c = Math.max(ur, ug, ub) - Math.min(ur, ug, ub);
       }
       L[k] = l; C[k] = c;
     }
@@ -340,6 +345,19 @@ function signature(img, box, sh) {
   }
   return { cells: cells, hidden: hidden, density: total / N, bbox: bbox, rows: rowsAll };
 }
+// Sahne rengi: dikdörtgendeki yazı olmayan piksellerin ortalaması (kare oranı cinsinden dikdörtgen).
+function sceneColor(img, r) {
+  var x0 = Math.max(0, Math.floor(r.x0 * img.width)), x1 = Math.min(img.width, Math.ceil(r.x1 * img.width));
+  var y0 = Math.max(0, Math.floor(r.y0 * img.height)), y1 = Math.min(img.height, Math.ceil(r.y1 * img.height));
+  var R = 0, G = 0, B = 0, n = 0, d = img.data;
+  for (var y = y0; y < y1; y += 2) for (var x = x0; x < x1; x += 2) {
+    var i = (y * img.width + x) * 4, l = (d[i] * 3 + d[i + 1] * 6 + d[i + 2]) / 10;
+    if (l > 170) continue;
+    R += d[i]; G += d[i + 1]; B += d[i + 2]; n++;
+  }
+  return n ? [R / n, G / n, B / n] : null;
+}
+
 // Oransal fark: 0 = aynı yazı, 1 = tamamen farklı. Ölçüm (GTA V): aynı cümle ardışık karelerde 0,02–0,07;
 // farklı cümleler 0,33–0,87.
 function sigDiff(a, b) {
@@ -379,7 +397,7 @@ function cropForGemini(img, box, sh) {
       var px = box.x0 + x, i = (py * img.width + px) * 4, o = (y * box.w + x) * 4;
       if (sp && px >= sp.x0 && px < sp.x1 && py >= sp.y0 && py < sp.y1) {
         if (sp.ownText && lum(d, i) > sp.ownThr) { out[o] = out[o + 1] = out[o + 2] = 0; }
-        else { out[o] = Math.min(255, d[i] * sp.gain); out[o + 1] = Math.min(255, d[i + 1] * sp.gain); out[o + 2] = Math.min(255, d[i + 2] * sp.gain); }
+        else { out[o] = unmix(d[i], sp.bg[0], sp); out[o + 1] = unmix(d[i + 1], sp.bg[1], sp); out[o + 2] = unmix(d[i + 2], sp.bg[2], sp); }
       } else { out[o] = d[i]; out[o + 1] = d[i + 1]; out[o + 2] = d[i + 2]; }
       var g = (out[o] * 3 + out[o + 1] * 6 + out[o + 2]) / 10;   // gri ton: altyazı beyaz, renk gerekmez
       out[o] = out[o + 1] = out[o + 2] = g;
@@ -646,7 +664,7 @@ setInterval(function () {
   memoryDirty = false;
   fs.writeFile(MEMORY_FILE, JSON.stringify(cacheByEn), function (e) { if (e) log('hafıza yazılamadı: ' + e.message); });
 }, 5000);
-var reqSeq = 0, inFlight = 0, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0;
+var reqSeq = 0, inFlight = 0, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0, lastColorAt = 0, lastColor = null;
 var shade = null, rebase = false, peekAckAt = 0;   // ekrandaki Türkçe kutunun yeri (kare oranı) — uygulama bildirir
 
 // Yakalama: iki istek üst üste (TV her biri için ~340 ms harcıyor); en son kare işlenir.
@@ -739,6 +757,19 @@ async function loop() {
       var hasText = looksLikeSubtitle(sig);   // sadece ortalanmış, ince çizgili yazı satırı altyazı sayılır
       debugFrame(fr.buf, (boxOpen ? (shown ? 'TR' : 'BOS-KUTU') : 'kutu-yok') + '_' + (hasText ? 'yazi' : 'bos'));
       if (hasText) growBox(sig.bbox);
+      if (boxOpen && Date.now() - lastColorAt > 700) {
+        lastColorAt = Date.now();
+        // Kutunun hemen üstündeki şeridi örnekle (kutunun kendi rengi karışmasın); kutu yoksa yazı alanını
+        var ref = shade ? { x0: shade.x0, x1: shade.x1, y0: Math.max(0, shade.y0 - 0.05), y1: Math.max(0.01, shade.y0 - 0.005) }
+                        : (sig.bbox ? { x0: sig.bbox.x0 - 0.03, x1: sig.bbox.x1 + 0.03, y0: sig.bbox.y0 - 0.02, y1: sig.bbox.y1 + 0.02 } : null);
+        var col = ref && sceneColor(img, ref);
+        if (col) {
+          var dark = col.map(function (v) { return Math.round(v * 0.42); });   // koyu ton: beyaz yazı okunur kalsın
+          if (!lastColor || Math.abs(dark[0] - lastColor[0]) + Math.abs(dark[1] - lastColor[1]) + Math.abs(dark[2] - lastColor[2]) > 18) {
+            lastColor = dark; emit({ bg: dark });
+          }
+        }
+      }
       if (!hasText) {
         emptyFrames++;
         if (emptyFrames >= 2) {
@@ -861,7 +892,7 @@ service.register('setPlacement', function (m) {
 });
 service.register('boxRect', function (m) {
   var p = m.payload || {};
-  shade = p.none ? null : { x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1, alpha: p.alpha || BOX_ALPHA, hasText: p.hasText !== false };
+  shade = p.none ? null : { x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1, alpha: p.alpha || BOX_ALPHA, hasText: p.hasText !== false, bg: p.bg || [0, 0, 0] };
   rebase = true;
   if (p.peek) peekAckAt = Date.now();
   m.respond({ returnValue: true });

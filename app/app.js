@@ -55,14 +55,23 @@
   }
   // Kutu koyuluğu: Türkçe varken %90; yeni İngilizceye "göz atarken" bir an %50 (servis net okuyabilsin).
   var ALPHA_TEXT = 0.9, ALPHA_PEEK = 0.75, alpha = ALPHA_TEXT, hasText = false;   // göz atma: göze daha az belli olsun (alttaki İngilizce 4 kat parlatılarak okunur)
-  function setAlpha(a) { alpha = a; subEl.style.background = 'rgba(0,0,0,' + a + ')'; }
+  // Örtü rengi sahneden gelir (koyu ton); kenarlar aynı renkte yumuşak gölgeyle sahneye karışır.
+  var bg = [0, 0, 0];
+  function paint() {
+    var c = bg[0] + ',' + bg[1] + ',' + bg[2];
+    subEl.style.background = 'rgba(' + c + ',' + alpha + ')';
+    // "Üstte" modunda gölge küçük: alttaki İngilizceye taşmasın
+    var sh = placement === 'above' ? '0 0 14px 6px' : '0 0 26px 16px';
+    subEl.style.boxShadow = sh + ' rgba(' + c + ',' + (alpha * 0.9).toFixed(2) + ')';
+  }
+  function setAlpha(a) { alpha = a; paint(); }
   function reportRect(peek) {
     // Servise kutunun gerçek yerini ve koyuluğunu bildir: altındaki İngilizceyi okumaya devam edebilsin.
     requestAnimationFrame(function () { requestAnimationFrame(function () {
       if (subEl.style.display === 'none') { luna('rect', SVC + 'boxRect', { none: true }); return; }
       var r = subEl.getBoundingClientRect();
       luna('rect', SVC + 'boxRect', { x0: (r.left - 2) / W, y0: (r.top - 2) / H, x1: (r.right + 2) / W, y1: (r.bottom + 2) / H,
-        alpha: alpha, hasText: hasText, peek: !!peek });
+        alpha: alpha, hasText: hasText, peek: !!peek, bg: bg });
     }); });
   }
   function showSub(tr, bbox) {
@@ -169,6 +178,7 @@
       else if (r.peek && subEl.style.display !== 'none') { setAlpha(ALPHA_PEEK); reportRect(true); }   // eski Türkçe kalır, kutu bir an açılır
       if (r.peekEnd && subEl.style.display !== 'none') { setAlpha(ALPHA_TEXT); reportRect(); }
       if (r.placement) placement = r.placement;
+      if (r.bg) { bg = r.bg; paint(); }
       if (r.tr) showSub(r.tr, r.bbox);
       else if (r.bbox && !r.pending && subEl.style.display !== 'none') {
         // İngilizce büyüdü (ör. yeni satır geldi): örtü büyüsün / üstteki kutu gerekirse yukarı çıksın
