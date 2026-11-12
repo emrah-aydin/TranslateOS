@@ -319,10 +319,11 @@ function sigDiff(a, b) {
 var CHANGED = 0.2, SAME = 0.12, STILL_SAME = 0.35;
 // Kutuyu önceden açmak için yeterince "altyazı gibi" mi: yoğun, ortalanmış, satır yüksekliğinde.
 function looksLikeSubtitle(sig) {
-  var b = sig.bbox; if (!b || sig.density < 0.004) return false;
+  var b = sig.bbox; if (!b || sig.density < 0.003) return false;
   var h = (b.y1 - b.y0) * 540, w = (b.x1 - b.x0) * 960, cx = (b.x0 + b.x1) / 2;
-  return h >= 8 && h <= 48 && w >= 50 && w / h >= 3 && Math.abs(cx - 0.5) < 0.15 &&
-    b.fill >= 0.06 && b.fill <= 0.6 && b.share >= 0.6;      // yazının çoğu tek bir ortalanmış satır bloğunda
+  // Altyazı ekranın tam ortasındadır (ölçüm: hep 0,50); bu sıkı kural sayesinde desenli zeminde diğer sınırlar gevşek tutulabilir.
+  return h >= 8 && h <= 48 && w >= 50 && w / h >= 2 && Math.abs(cx - 0.5) < 0.06 &&
+    b.fill >= 0.035 && b.fill <= 0.6 && b.share >= 0.6;
 }
 // Gemini'ye giden kırpım: kutu içi parlatılır, bizim Türkçe yazı silinir; böylece model alttaki İngilizceyi okur.
 function cropForGemini(img, box, sh) {
@@ -584,7 +585,8 @@ async function loop() {
         if (pendingSince && Date.now() - pendingSince > 3500) { pendingSince = 0; if (shown) emit({ peekEnd: true }); else closeBox(); }
         if (sigDiff(sig, lastSentSig) > CHANGED) {   // yeni / farklı yazı
           // Altyazı belirirken solup parlar: uçuşta aynı yazı için istek varsa yenisini gönderme.
-          if (inFlight > 0 && sigDiff(sig, lastReqSig) < 0.5) { lastSentSig = sig; continue; }
+          // (Referans güncellenmez: çeviri dönünce yazı hâlâ farklıysa yeni istek gider; arka arkaya gelen cümle kaçmaz.)
+          if (inFlight > 0 && sigDiff(sig, lastReqSig) < 0.25) continue;
           if (boxOpen && shown && sigDiff(sig, shownSig) > CHANGED) {
             // Kutu altındaki yeni İngilizce soluk okunur ve bozulabilir. Eski Türkçe ekranda KALIR; kutu sadece bir an
             // yarı saydam olur (göz atma), ondan sonraki net kareyle okunur. Ekranda hiç boş siyah kutu olmaz.
