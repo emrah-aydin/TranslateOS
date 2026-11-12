@@ -15,7 +15,7 @@ var lastBeat = 0, loopStage = 'başlamadı';
 var REGISTRATION = require('./registration.json');
 var CONFIG = {};
 try { CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.json'), 'utf8')); } catch (e) {}
-var MODEL = CONFIG.model || 'gemini-3.5-flash-lite';
+var MODEL = CONFIG.model || 'gemini-flash-lite-latest';  // TV'den ölçüm: 0,7–1,0 sn (kalıcı bağlantıyla)
 var KEY_FILE = '/tmp/translateos_app_client_key';
 
 // Altyazı bölgesi (kare oranı). Türkçe kutumuz bunun ÜSTÜNDE durur, bu yüzden bu bölgeye girmez.
@@ -192,39 +192,107 @@ function cropJpeg(img, box) {
 // --- Gemini ---
 var PROMPT = 'This is the bottom strip of a video game frame. If it contains an English dialogue subtitle (usually white, centered, ' +
   'possibly two lines), return it and a natural, fluent Turkish translation suitable for game subtitles (keep names; casual tone ' +
-  'if the speaker is casual). Ignore HUD, minimap, phone screens, signs, license plates and any Turkish text. Reply only JSON: ' +
+  'if the speaker is casual). A dialogue subtitle is a spoken sentence, not a single name. Ignore HUD, minimap, location or street ' +
+  'names, mission titles, phone screens, signs, license plates and any Turkish text. Reply only JSON: ' +
   '{"en": "...", "tr": "..."}. If there is no English subtitle, reply {"en": "", "tr": ""}.';
 
-function geminiRequest(body, thinking) {
+// Kalıcı bağlantı: her istekte yeniden TLS el sıkışması yapılmasın (TV işlemcisinde pahalı).
+var geminiAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10000, maxSockets: 4 });
+function httpsJson(method, pathName, body) {
+  return new Promise(function (resolve, reject) {
+    var data = body ? Buffer.from(JSON.stringify(body)) : null;
+    var req = https.request({ host: 'generativelanguage.googleapis.com', path: pathName, method: method, agent: geminiAgent,
+      headers: Object.assign({ 'x-goog-api-key': CONFIG.geminiKey }, data ? { 'Content-Type': 'application/json', 'Content-Length': data.length } : {}) },
+      function (res) {
+        var chunks = [];
+        res.on('data', function (c) { chunks.push(c); });
+        res.on('end', function () { resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8'), reused: req.reusedSocket }); });
+      });
+    req.on('error', reject);
+    req.setTimeout(8000, function () { req.destroy(new Error('Gemini zaman aşımı')); });
+    if (data) req.write(data);
+    req.end();
+  });
+}
+function geminiRequest(body, thinking, model) {
   var cfg = { responseMimeType: 'application/json', temperature: 0 };
   if (thinking === 'level') cfg.thinkingConfig = { thinkingLevel: 'minimal' };
   if (thinking === 'budget') cfg.thinkingConfig = { thinkingBudget: 0 };
   body.generationConfig = cfg;
-  return fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': CONFIG.geminiKey }, body: JSON.stringify(body)
-  });
+  return httpsJson('POST', '/v1beta/models/' + (model || MODEL) + ':generateContent', body);
 }
-var thinkingMode = 'level';
-async function readAndTranslate(jpg) {
+var thinkingMode = {};
+async function readAndTranslate(jpg, model) {
+  model = model || MODEL;
+  var tm = thinkingMode[model] === undefined ? 'level' : thinkingMode[model];
   var body = { contents: [{ parts: [{ inline_data: { mime_type: 'image/jpeg', data: Buffer.from(jpg).toString('base64') } }, { text: PROMPT }] }] };
-  var res = await geminiRequest(body, thinkingMode);
-  if (res.status === 400 && thinkingMode) { thinkingMode = thinkingMode === 'level' ? 'budget' : null; return readAndTranslate(jpg); }
-  if (!res.ok) { var t = await res.text(); throw Object.assign(new Error('Gemini ' + res.status + ': ' + t.slice(0, 160)), { status: res.status }); }
-  var j = await res.json();
+  var t0 = Date.now();
+  var res = await geminiRequest(body, tm, model);
+  if (res.status === 400 && tm) { thinkingMode[model] = tm === 'level' ? 'budget' : null; return readAndTranslate(jpg, model); }
+  if (res.status !== 200) throw Object.assign(new Error('Gemini ' + res.status + ': ' + res.text.slice(0, 160)), { status: res.status });
+  var j = JSON.parse(res.text);
   var text = j.candidates && j.candidates[0] && j.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('');
   var o = JSON.parse(text);
-  return { en: String(o.en || '').trim(), tr: String(o.tr || '').trim() };
+  return { en: String(o.en || '').trim(), tr: String(o.tr || '').trim(), ms: Date.now() - t0, reused: !!res.reused };
+}
+// Bağlantıyı sıcak tut: boşta kalınca ücretsiz bir model bilgisi isteği.
+var lastGemini = 0;
+setInterval(function () {
+  if (!running || !CONFIG.geminiKey || Date.now() - lastGemini < 8000) return;
+  lastGemini = Date.now();
+  httpsJson('GET', '/v1beta/models/' + MODEL).catch(function () {});
+}, 4000);
+
+// Kıyas: config.bench = ["model1", ...] ise açılışta örnek kareyle her modeli 3 kez dener.
+async function bench() {
+  var sample; try { sample = fs.readFileSync(path.join(__dirname, 'bench.jpg')); } catch (e) { return; }
+  var models = CONFIG.bench || [];
+  for (var i = 0; i < models.length; i++) {
+    var times = [], last = null;
+    for (var k = 0; k < 3; k++) {
+      try { var r = await readAndTranslate(sample, models[i]); times.push(r.ms + (r.reused ? '' : '*')); last = r.tr; }
+      catch (e) { times.push('HATA ' + e.message.slice(0, 60)); }
+    }
+    log('KIYAS ' + models[i] + ': ' + times.join(' / ') + ' ms  → ' + last);
+  }
 }
 
 // --- Ana döngü ---
 // Görüntü sürekli alınır. Altyazı bölgesi değişince hemen Gemini'ye gider (sonucu beklemeden yakalama sürer).
 // Daha yeni bir istek varken gelen eski sonuç gösterilmez. Gösterilen Türkçe, İngilizce kalkınca/değişince hemen kalkar.
 var sigCache = [];    // [{sig, out}] — benzer görüntü → aynı sonuç (API'ye tekrar gitmez)
-var cacheByEn = {};    // aynı İngilizce cümle → aynı çeviri
-var reqSeq = 0, inFlight = 0;
+var cacheByEn = {};    // aynı İngilizce cümle → aynı çeviri (kalıcı: memory.json)
+
+// --- Kalıcı cümle hafızası ---
+// Her çevrilen cümle diske yazılır; uygulama yeniden açılınca yüklenir. İleride topluluk çeviri paketlerinin temeli.
+var MEMORY_FILE = null;
+function normEn(t) { return String(t).toLowerCase().replace(/[^a-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+(function loadMemory() {
+  var candidates = [path.join(__dirname, 'memory.json'), '/media/developer/temp/translateos-memory.json', '/tmp/translateos-memory.json'];
+  for (var i = 0; i < candidates.length; i++) {
+    try {
+      if (fs.existsSync(candidates[i])) { var m = JSON.parse(fs.readFileSync(candidates[i], 'utf8')); Object.keys(m).forEach(function (k) { cacheByEn[k] = m[k]; }); }
+      fs.writeFileSync(candidates[i] + '.yaz', 'ok'); fs.unlinkSync(candidates[i] + '.yaz');
+      MEMORY_FILE = candidates[i]; break;
+    } catch (e) {}
+  }
+})();
+var memoryDirty = false;
+function remember(en, tr) {
+  var k = normEn(en); if (!k || !tr) return;
+  if (cacheByEn[k] === tr) return;
+  cacheByEn[k] = tr; memoryDirty = true;
+}
+setInterval(function () {
+  if (!memoryDirty || !MEMORY_FILE) return;
+  memoryDirty = false;
+  fs.writeFile(MEMORY_FILE, JSON.stringify(cacheByEn), function (e) { if (e) log('hafıza yazılamadı: ' + e.message); });
+}, 5000);
+var reqSeq = 0, inFlight = 0, lastTiming = '';
 async function loop() {
   if (running) return; running = true;
   if (!CONFIG.geminiKey) { log('Gemini anahtarı yok (config.local.json)'); emit({ status: 'nokey' }); }
+  if (CONFIG.bench && CONFIG.bench.length) { try { await bench(); } catch (e) { log('kıyas hatası: ' + e.message); } }
   var lastSentSig = null, shownSig = null, shown = '', emptyFrames = 0, backoffUntil = 0, latestShownSeq = 0;
   function show(seq, sig, out, ms) {
     if (seq < latestShownSeq) return;            // daha yeni bir sonuç zaten gösterildi
@@ -232,16 +300,19 @@ async function loop() {
     latestShownSeq = seq;
     if (out.tr) { shown = out.tr; shownSig = sig; emit({ en: out.en, tr: out.tr }); }
     else if (shown) { shown = ''; shownSig = null; emit({ clear: true }); }
-    log((ms != null ? 'çeviri ' + ms + ' ms' : 'önbellek') + ': ' + (out.en || '(altyazı yok)'));
+    log((ms != null ? 'çeviri ' + ms + ' ms (Gemini ' + out.ms + ' ms' + (out.reused ? '' : ', YENİ BAĞLANTI') + '; ' + lastTiming + ')' : 'önbellek') + ': ' + (out.en || '(altyazı yok)'));
   }
   while (running) {
     var t0 = Date.now();
     try {
       if (Date.now() - lastBeat > 10000) { lastBeat = Date.now(); log('nabız: kare ' + stats.frames + ', istek ' + stats.calls + ', önbellek ' + stats.cacheHits + ', hata ' + stats.errors + ', bekleyen ' + inFlight); }
       loopStage = 'yakalama';
+      var tCap = Date.now();
       var buf = await withTimeout(captureFrame(), 6000, 'yakalama'); stats.frames++;
       loopStage = 'çözme';
+      var tDec = Date.now();
       var img = jpeg.decode(buf, { useTArray: true });
+      var tSig = Date.now();
       var box = regionBox(img, EN_REGION);
       var sig = signature(img, box);
       var hasText = sig.density > 0.003;
@@ -258,13 +329,15 @@ async function loop() {
           lastSentSig = sig;
           var seq = ++reqSeq, hit = null;
           for (var c = 0; c < sigCache.length; c++) if (sigDiff(sig, sigCache[c].sig) < SAME) { hit = sigCache[c].out; break; }
+          lastTiming = 'yakalama ' + (tDec - tCap) + ' ms, çözme ' + (tSig - tDec) + ' ms, imza ' + (Date.now() - tSig) + ' ms';
           if (hit) { stats.cacheHits++; show(seq, sig, hit, null); }
           else if (Date.now() > backoffUntil && CONFIG.geminiKey && inFlight < 3) {
-            stats.calls++; inFlight++;
+            stats.calls++; inFlight++; lastGemini = Date.now();
             (function (seq, sig, jpg, tc) {
               withTimeout(readAndTranslate(jpg), 8000, 'çeviri').then(function (out) {
-                if (out.en && cacheByEn[out.en]) out.tr = cacheByEn[out.en];
-                if (out.en) { cacheByEn[out.en] = out.tr; sigCache.unshift({ sig: sig, out: out }); if (sigCache.length > 300) sigCache.pop(); }
+                var k = normEn(out.en);
+                if (k && cacheByEn[k]) out.tr = cacheByEn[k];          // aynı cümle hep aynı çeviri
+                if (k) { remember(out.en, out.tr); sigCache.unshift({ sig: sig, out: out }); if (sigCache.length > 300) sigCache.pop(); }
                 show(seq, sig, out, Date.now() - tc);
               }).catch(function (e) {
                 stats.errors++; log('çeviri hatası: ' + e.message);
@@ -288,6 +361,7 @@ async function loop() {
 var keepAlive = null;
 service.register('start', function (message) {
   if (message.isSubscription) subscribers.push(message);
+  log('hafıza: ' + Object.keys(cacheByEn).length + ' cümle (' + (MEMORY_FILE || 'yazılamıyor') + ')');
   log('start çağrıldı (abone: ' + subscribers.length + ', anahtar: ' + (CONFIG.geminiKey ? 'var' : 'YOK') + ', node ' + process.version + ')');
   if (!keepAlive) service.activityManager.create('translateos-keepalive', function (a) { keepAlive = a; });
   message.respond({ returnValue: true, status: 'started', model: MODEL });

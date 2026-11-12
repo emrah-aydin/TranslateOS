@@ -14,3 +14,5 @@ service/config.local.json
 
 # Deney artıkları
 tv-service/tessdata/
+service/bench.jpg
+service/memory.json
