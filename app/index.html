@@ -32,23 +32,21 @@
   #badge .logo b { color: #5ec8ff; }
   #badge .by { font-size: 20px; color: #9fb3c8; }
 
-  /* Menü (Yeşil tuş) */
+  /* Menü (Yeşil tuş): küçük ve sade */
   #menu {
-    position: absolute; right: 48px; top: 50%; transform: translateY(-50%); width: 560px; display: none;
-    padding: 34px 38px; border-radius: 22px; color: #e9f2fb;
-    background: linear-gradient(160deg, rgba(14,22,36,.94), rgba(6,10,18,.94));
-    border: 1px solid rgba(94,200,255,.35); box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    position: absolute; right: 40px; top: 40px; width: 380px; display: none;
+    padding: 22px 26px; border-radius: 16px; color: #e9f2fb;
+    background: rgba(10,16,26,.92); border: 1px solid rgba(94,200,255,.25);
+    box-shadow: 0 12px 40px rgba(0,0,0,.5);
   }
-  #menu h1 { margin: 0; font-size: 46px; font-weight: 800; letter-spacing: .5px; }
+  #menu h1 { margin: 0 0 14px; font-size: 32px; font-weight: 800; }
   #menu h1 b { color: #5ec8ff; }
-  #menu .tag { margin: 6px 0 22px; color: #8ea6bd; font-size: 22px; }
-  #menu .row { display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid rgba(255,255,255,.08); font-size: 24px; }
+  #menu .row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 20px; color: #9fb3c8; }
   #menu .row span:last-child { color: #fff; font-weight: 600; }
-  #menu .on { color: #6ef0a8 !important; } #menu .off { color: #ff8a8a !important; }
-  #menu .keys { margin-top: 18px; font-size: 20px; color: #8ea6bd; line-height: 1.6; }
-  #menu .credit { margin-top: 24px; padding-top: 18px; border-top: 1px solid rgba(94,200,255,.25); }
-  #menu .credit .name { font-size: 30px; font-weight: 800; letter-spacing: 1px; }
-  #menu .credit .ig { font-size: 22px; color: #ff9ad5; margin-top: 4px; }
+  #menu .keys { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.08); font-size: 17px; color: #9fb3c8; line-height: 1.7; }
+  #menu .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+  #menu .credit { margin-top: 14px; font-size: 16px; color: #7f93a8; }
+  #menu .credit b { color: #fff; }
 </style>
 </head>
 <body>
@@ -63,18 +61,16 @@
 
 <div id="menu">
   <h1>Translate<b>OS</b></h1>
-  <div class="tag">Oyun altyazılarını anlık Türkçeye çevirir</div>
-  <div class="row"><span>Altyazı</span><span id="m-sub" class="on">Açık</span></div>
-  <div class="row"><span>Durum</span><span id="m-state">—</span></div>
+  <div class="row"><span>Altyazı</span><span id="m-sub">Açık</span></div>
+  <div class="row"><span>Türkçe</span><span id="m-place">İngilizcenin üstünde</span></div>
   <div class="row"><span>Çevrilen cümle</span><span id="m-calls">0</span></div>
-  <div class="row"><span>Hafızadan gelen</span><span id="m-hits">0</span></div>
   <div class="row"><span>Hafızadaki cümle</span><span id="m-mem">0</span></div>
-  <div class="row"><span>HDMI girişi</span><span id="m-hdmi">1</span></div>
-  <div class="keys">Kırmızı: altyazı aç / kapat · Yeşil: menü<br>1–4: HDMI girişi · Geri: çıkış</div>
-  <div class="credit">
-    <div class="name">Emrah AYDIN</div>
-    <div class="ig">Instagram · @emrahaydin.es</div>
+  <div class="keys">
+    <div><span class="dot" style="background:#e5484d"></span>Altyazıyı aç / kapat</div>
+    <div><span class="dot" style="background:#f5c542"></span>Türkçe üstte / yerine</div>
+    <div><span class="dot" style="background:#46a758"></span>Bu menü</div>
   </div>
+  <div class="credit"><b>Emrah AYDIN</b> · @emrahaydin.es</div>
 </div>
 
 <script src="app.js"></script>

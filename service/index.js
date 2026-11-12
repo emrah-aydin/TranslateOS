@@ -17,6 +17,7 @@ var CONFIG = {};
 try { CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.json'), 'utf8')); } catch (e) {}
 var MODEL = CONFIG.model || 'gemini-flash-lite-latest';  // TV'den ölçüm: 0,7–1,0 sn (kalıcı bağlantıyla)
 var KEY_FILE = '/tmp/translateos_app_client_key';
+var placement = CONFIG.placement || 'above';   // 'above': Türkçe İngilizcenin üstünde · 'cover': İngilizcenin yerine
 
 // Altyazı bölgesi (kare oranı). Türkçe kutumuz bunun ÜSTÜNDE durur, bu yüzden bu bölgeye girmez.
 var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.865, y1: 1.0 };
@@ -325,7 +326,15 @@ function looksLikeSubtitle(sig) {
   return h >= 8 && h <= 48 && w >= 50 && w / h >= 2 && Math.abs(cx - 0.5) < 0.06 &&
     b.fill >= 0.035 && b.fill <= 0.6 && b.share >= 0.6;
 }
-// Gemini'ye giden kırpım: kutu içi parlatılır, bizim Türkçe yazı silinir; böylece model alttaki İngilizceyi okur.
+// Gemini'ye giden kırpım: sadece yazının olduğu alan (+pay), gri tonlu, küçük → Wi-Fi'da daha hızlı yükleme ve işlem.
+// Kutu içi parlatılır, bizim Türkçe yazı silinir; böylece model alttaki İngilizceyi okur.
+function tightBox(img, box, bbox) {
+  if (!bbox) return box;
+  var padX = Math.round(img.width * 0.03), padY = Math.round(img.height * 0.02);
+  var x0 = Math.max(box.x0, Math.floor(bbox.x0 * img.width) - padX), x1 = Math.min(box.x0 + box.w, Math.ceil(bbox.x1 * img.width) + padX);
+  var y0 = Math.max(box.y0, Math.floor(bbox.y0 * img.height) - padY), y1 = Math.min(box.y0 + box.h, Math.ceil(bbox.y1 * img.height) + padY);
+  return { x0: x0, y0: y0, w: x1 - x0, h: y1 - y0 };
+}
 function cropForGemini(img, box, sh) {
   var out = Buffer.alloc(box.w * box.h * 4), d = img.data, sp = shadePx(img, sh);
   for (var y = 0; y < box.h; y++) {
@@ -336,10 +345,12 @@ function cropForGemini(img, box, sh) {
         if (sp.ownText && lum(d, i) > sp.ownThr) { out[o] = out[o + 1] = out[o + 2] = 0; }
         else { out[o] = Math.min(255, d[i] * sp.gain); out[o + 1] = Math.min(255, d[i + 1] * sp.gain); out[o + 2] = Math.min(255, d[i + 2] * sp.gain); }
       } else { out[o] = d[i]; out[o + 1] = d[i + 1]; out[o + 2] = d[i + 2]; }
+      var g = (out[o] * 3 + out[o + 1] * 6 + out[o + 2]) / 10;   // gri ton: altyazı beyaz, renk gerekmez
+      out[o] = out[o + 1] = out[o + 2] = g;
       out[o + 3] = 255;
     }
   }
-  return jpeg.encode({ data: out, width: box.w, height: box.h }, 90).data;
+  return jpeg.encode({ data: out, width: box.w, height: box.h }, 82).data;
 }
 
 // --- Gemini ---
@@ -557,14 +568,14 @@ async function loop() {
   // Okuma süresi: Türkçe, İngilizce erken kalksa bile en az bu kadar ekranda kalır (yeni cümle gelirse onun yerine geçer).
   function readTime(tr) { return Math.max(2500, Math.min(7000, 1800 + String(tr).length * 55)); }
   function union(a, b) { if (!a) return b; if (!b) return a; return { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) }; }
-  function openBox(msg) { boxOpen = true; if (msg.bbox) boxBbox = union(boxBbox, msg.bbox), msg.bbox = boxBbox; emit(msg); }
+  function openBox(msg) { boxOpen = true; if (msg.bbox) boxBbox = union(boxBbox, msg.bbox), msg.bbox = boxBbox; msg.placement = placement; emit(msg); }
   function closeBox() { peekSince = 0; if (boxOpen) { boxOpen = false; shown = ''; shownSig = null; pendingSince = 0; boxBbox = null; emit({ clear: true }); } }
   // İngilizce, kutunun örttüğü alandan taştıysa (ör. ikinci satır geldi) kutuyu büyüt.
   function growBox(b) {
     if (!boxOpen || !b || !boxBbox) return;
     var m = 0.004;
     if (b.x0 < boxBbox.x0 - m || b.x1 > boxBbox.x1 + m || b.y0 < boxBbox.y0 - m || b.y1 > boxBbox.y1 + m) {
-      boxBbox = union(boxBbox, b); emit({ bbox: boxBbox });
+      boxBbox = union(boxBbox, b); emit({ bbox: boxBbox, placement: placement });
     }
   }
   var latestShownSeq = 0;
@@ -628,7 +639,7 @@ async function loop() {
           // Altyazı belirirken solup parlar: uçuşta aynı yazı için istek varsa yenisini gönderme.
           // (Referans güncellenmez: çeviri dönünce yazı hâlâ farklıysa yeni istek gider; arka arkaya gelen cümle kaçmaz.)
           if (inFlight > 0 && sigDiff(sig, lastReqSig) < 0.25) continue;
-          if (boxOpen && shown && sigDiff(sig, shownSig) > CHANGED) {
+          if (placement === 'cover' && boxOpen && shown && sigDiff(sig, shownSig) > CHANGED) {
             // Kutu altındaki yeni İngilizce soluk okunur ve bozulabilir. Eski Türkçe ekranda KALIR; kutu sadece bir an
             // yarı saydam olur (göz atma), ondan sonraki net kareyle okunur. Ekranda hiç boş siyah kutu olmaz.
             peekSince = Date.now(); peekAckAt = 0; pendingSince = Date.now();
@@ -640,7 +651,7 @@ async function loop() {
           debugFrame(fr.buf, 'ISTEK', true);
           var seq = ++reqSeq, hit = null;
           for (var c = 0; c < sigCache.length; c++) if (sigDiff(sig, sigCache[c].sig) < SAME) { hit = sigCache[c].out; break; }
-          if (!hit) hit = recentHit(sig);
+          // (Not: şekil benzerliğiyle 'aynı cümle' tahmini kısa satırlarda yanlış eşleştirdi; kaldırıldı. Doğruluk önce.)
           lastTiming = 'yakalama ' + fr.capMs + ' ms, çözme ' + (tSig - tDec) + ' ms, imza ' + (Date.now() - tSig) + ' ms';
           if (hit) { stats.cacheHits++; show(seq, sig, hit, null, sig.bbox); }
           else if (Date.now() > backoffUntil && CONFIG.geminiKey && inFlight < 3) {
@@ -659,7 +670,7 @@ async function loop() {
                 if (e.status === 429) backoffUntil = Date.now() + 15000;
                 if (seq === reqSeq) lastSentSig = null;  // tekrar denensin
               }).then(function () { inFlight--; });
-            })(seq, sig, cropForGemini(img, box, sh), Date.now(), sig.bbox);
+            })(seq, sig, cropForGemini(img, tightBox(img, box, sig.bbox), sh), Date.now(), sig.bbox);
           }
         }
       }
@@ -689,6 +700,11 @@ service.register('start', function (message) {
   }
 });
 service.register('stop', function (m) { running = false; m.respond({ returnValue: true }); });
+service.register('setPlacement', function (m) {
+  var p = m.payload && m.payload.placement;
+  if (p === 'above' || p === 'cover') { placement = p; log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
+  m.respond({ returnValue: true, placement: placement });
+});
 service.register('boxRect', function (m) {
   var p = m.payload || {};
   shade = p.none ? null : { x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1, alpha: p.alpha || BOX_ALPHA, hasText: p.hasText !== false };
@@ -696,10 +712,10 @@ service.register('boxRect', function (m) {
   if (p.peek) peekAckAt = Date.now();
   m.respond({ returnValue: true });
 });
-service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length }, stats)); });
+service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, placement: placement }, stats)); });
 service.register('showInput', function (m) {
   // Uygulamadan çıkarken TV'nin kendi HDMI ekranına güvenli dönüş.
   var id = 'com.webos.app.hdmi' + ((m.payload && m.payload.port) || 1);
   lunaCall('luna://com.webos.applicationManager/launch', { id: id }).then(function (r) { m.respond(r || { returnValue: true }); });
 });
-module.exports = { _test: { looksEnglish: looksEnglish, looksLikeSubtitle: looksLikeSubtitle, regionBox: regionBox, signature: signature, sigDiff: sigDiff, cropForGemini: cropForGemini, decodeJpeg: decodeJpeg, initDecoder: initDecoder, EN_REGION: EN_REGION } };
+module.exports = { _test: { tightBox: tightBox, looksEnglish: looksEnglish, looksLikeSubtitle: looksLikeSubtitle, regionBox: regionBox, signature: signature, sigDiff: sigDiff, cropForGemini: cropForGemini, decodeJpeg: decodeJpeg, initDecoder: initDecoder, EN_REGION: EN_REGION } };

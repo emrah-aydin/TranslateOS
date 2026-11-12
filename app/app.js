@@ -2,14 +2,14 @@
 // Oyun sırasında bu ekrandan çıkılmaz (TV'nin kendi HDMI ekranına geçiş kararmaya yol açıyor).
 (function () {
   var W = 1920, H = 1080;
-  var KEY = { BACK: 461, RED: 403, GREEN: 404, OK: 13 };
+  var KEY = { BACK: 461, RED: 403, GREEN: 404, YELLOW: 405, OK: 13 };
   var SVC = 'luna://com.translateos.app.service/';
   var subEl = document.getElementById('sub');
   var statusEl = document.getElementById('status');
   var menuEl = document.getElementById('menu');
   var badgeEl = document.getElementById('badge');
   var bridges = {};
-  var enabled = true, port = 1, statusTimer = null, lastBbox = null, menuTimer = null;
+  var enabled = true, port = 1, statusTimer = null, lastBbox = null, menuTimer = null, menuCloseTimer = null, placement = 'above';
 
   // Her çağrı için tek köprü tutulur (abonelikler çöp toplayıcıya gitmesin).
   function luna(name, uri, params, cb) {
@@ -34,9 +34,17 @@
     var cx = (b.x0 + b.x1) / 2 * W;
     subEl.style.left = cx + 'px';
     subEl.style.transform = 'translateX(-50%)';
-    subEl.style.bottom = Math.max(0, (1 - b.y1) * H - padY) + 'px';
-    subEl.style.minWidth = ((b.x1 - b.x0) * W + 2 * padX) + 'px';
-    subEl.style.minHeight = ((b.y1 - b.y0) * H + 2 * padY) + 'px';
+    if (placement === 'above') {
+      // İngilizcenin hemen üstünde: ikisi birlikte görünür (senkron kontrolü için)
+      subEl.style.bottom = ((1 - b.y0) * H + 10) + 'px';
+      subEl.style.minWidth = '0px';
+      subEl.style.minHeight = '0px';
+    } else {
+      // İngilizcenin yerine: kutu İngilizceyi tamamen örter
+      subEl.style.bottom = Math.max(0, (1 - b.y1) * H - padY) + 'px';
+      subEl.style.minWidth = ((b.x1 - b.x0) * W + 2 * padX) + 'px';
+      subEl.style.minHeight = ((b.y1 - b.y0) * H + 2 * padY) + 'px';
+    }
   }
   // Kutu koyuluğu: Türkçe varken %90; yeni İngilizceye "göz atarken" bir an %50 (servis net okuyabilsin).
   var ALPHA_TEXT = 0.9, ALPHA_PEEK = 0.5, alpha = ALPHA_TEXT, hasText = false;
@@ -91,7 +99,6 @@
     s.setAttribute('src', 'ext://hdmi:' + p);
     v.appendChild(s);
     host.appendChild(v);
-    document.getElementById('m-hdmi').textContent = p;
   }
 
   // --- Ekran koruyucu / uyku: oyun oynanırken TV uyumasın ---
@@ -108,20 +115,21 @@
   // --- Menü ---
   function refreshMenu() {
     luna('stats', SVC + 'stats', {}, function (r) {
-      document.getElementById('m-state').textContent = r.running ? 'Çalışıyor' : 'Durdu';
       document.getElementById('m-calls').textContent = r.calls || 0;
-      document.getElementById('m-hits').textContent = r.cacheHits || 0;
       document.getElementById('m-mem').textContent = r.memory || 0;
     });
-    var m = document.getElementById('m-sub');
-    m.textContent = enabled ? 'Açık' : 'Kapalı';
-    m.className = enabled ? 'on' : 'off';
+    document.getElementById('m-sub').textContent = enabled ? 'Açık' : 'Kapalı';
+    document.getElementById('m-place').textContent = placement === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine';
   }
   function toggleMenu(show) {
     var open = show === undefined ? menuEl.style.display !== 'block' : show;
     menuEl.style.display = open ? 'block' : 'none';
     clearInterval(menuTimer);
-    if (open) { refreshMenu(); menuTimer = setInterval(refreshMenu, 2000); }
+    clearTimeout(menuCloseTimer);
+    if (open) {
+      refreshMenu(); menuTimer = setInterval(refreshMenu, 2000);
+      menuCloseTimer = setTimeout(function () { toggleMenu(false); }, 10000);   // oyunu kapatmasın
+    }
   }
 
   // --- Başlangıç ---
@@ -134,7 +142,7 @@
   showHdmi(port);
   blockScreenSaver();
   setTimeout(function () { badgeEl.style.opacity = '0'; }, 6000);
-  status('Yeşil: menü · Kırmızı: altyazı aç/kapat', 6000);
+  status('Menü için yeşil tuş', 4000);
 
   // Servise abone ol; servis düşer ya da abonelik koparsa kendiliğinden yeniden bağlan.
   var resubTimer = null;
@@ -153,6 +161,7 @@
       if (r.pending) pendingSub(r.bbox, r.peek);
       else if (r.peek && subEl.style.display !== 'none') { setAlpha(ALPHA_PEEK); reportRect(true); }   // eski Türkçe kalır, kutu bir an açılır
       if (r.peekEnd && subEl.style.display !== 'none') { setAlpha(ALPHA_TEXT); reportRect(); }
+      if (r.placement) placement = r.placement;
       if (r.tr) showSub(r.tr, r.bbox);
       else if (r.bbox && !r.pending && subEl.style.display !== 'none') { lastBbox = r.bbox; placeBox(r.bbox); reportRect(); }  // kutu büyüdü
     });
@@ -170,6 +179,13 @@
       enabled = !enabled;
       if (!enabled) hideSub();
       status(enabled ? 'Altyazı açık' : 'Altyazı kapalı', 2000);
+      if (menuEl.style.display === 'block') refreshMenu();
+      e.preventDefault();
+    } else if (e.keyCode === KEY.YELLOW) {
+      placement = placement === 'above' ? 'cover' : 'above';
+      luna('place', SVC + 'setPlacement', { placement: placement });
+      if (subEl.style.display !== 'none') { placeBox(lastBbox); reportRect(); }
+      status(placement === 'above' ? 'Türkçe: İngilizcenin üstünde' : 'Türkçe: İngilizcenin yerine', 2500);
       if (menuEl.style.display === 'block') refreshMenu();
       e.preventDefault();
     } else if (e.keyCode === KEY.GREEN || e.keyCode === KEY.OK) {
