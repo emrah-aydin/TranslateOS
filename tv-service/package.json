@@ -1,0 +1,8 @@
+{
+  "name": "com.translateos.selftest.service",
+  "version": "0.0.1",
+  "main": "index.js",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

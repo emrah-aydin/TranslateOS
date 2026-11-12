@@ -1,0 +1,16 @@
+# Kişisel / yerel veriler: TV adresi, eşleşme anahtarı, ekran görüntüleri, test günlükleri
+local/
+tv-app/debug-config.js
+
+# Bağımlılıklar ve derleme çıktıları
+node_modules/
+.venv/
+__pycache__/
+dist/
+*.ipk
+
+.DS_Store
+service/config.local.json
+
+# Deney artıkları
+tv-service/tessdata/

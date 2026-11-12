@@ -1,0 +1,13 @@
+{
+  "id": "com.translateos.app",
+  "version": "0.1.0",
+  "vendor": "TranslateOS",
+  "type": "web",
+  "main": "index.html",
+  "title": "TranslateOS",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#000000",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true
+}

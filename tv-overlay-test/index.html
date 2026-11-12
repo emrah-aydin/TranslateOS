@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TranslateOS Overlay Test</title>
+<style>
+  /* Sayfa tamamen şeffaf: alttaki HDMI görüntüsü görünmeli. */
+  html, body { margin: 0; width: 1920px; height: 1080px; background: transparent; overflow: hidden; }
+  /* İngilizce altyazının yerine (960x540 karede x 287–673, y ~505 → 1920x1080'de iki katı) siyah kutu. */
+  #sub {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: 978px; padding: 6px 22px; background: #000; color: #fff;
+    font: 600 38px/1.25 sans-serif; white-space: nowrap; border-radius: 4px;
+  }
+  #hdmi { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+  #tag { position: absolute; right: 24px; top: 20px; background: rgba(0,0,0,.6); color: #7f7; font: 24px sans-serif; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<div id="hdmi"></div>
+<div id="sub">Merhaba, Atomic Zeplin Hizmetleri. Bugün size nasıl yardımcı olabilirim?</div>
+<div id="tag">TranslateOS overlay testi · <span id="left">20</span> sn</div>
+<script>
+  // mode=video: HDMI görüntüsü uygulamanın içinde, altyazı üstünde (CouchSubs yöntemi).
+  var params = {};
+  try { params = JSON.parse(window.PalmSystem && window.PalmSystem.launchParams || '{}') || {}; } catch (e) {}
+  if (params.mode === 'video') {
+    var v = document.createElement('video'); v.autoplay = true; v.style.width = '1920px'; v.style.height = '1080px';
+    var src = document.createElement('source'); src.setAttribute('type', 'service/webos-external'); src.setAttribute('src', 'ext://hdmi:1');
+    v.appendChild(src); document.getElementById('hdmi').appendChild(v);
+    document.getElementById('tag').firstChild.nodeValue = 'TranslateOS HDMI-içinde testi · ';
+  }
+  var left = 15;
+  var t = setInterval(function () {
+    left--; document.getElementById('left').textContent = left;
+    if (left <= 0) { clearInterval(t); window.close(); }
+  }, 1000);
+  document.addEventListener('keydown', function (e) { if (e.keyCode === 461 || e.keyCode === 27) window.close(); });
+</script>
+</body>
+</html>

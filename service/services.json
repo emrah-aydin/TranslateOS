@@ -1,0 +1,5 @@
+{
+  "id": "com.translateos.app.service",
+  "description": "TranslateOS altyazı servisi",
+  "services": [ { "name": "com.translateos.app.service", "description": "Ekranı okur, çevirir, uygulamaya bildirir" } ]
+}

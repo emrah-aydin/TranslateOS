@@ -1,0 +1,10 @@
+{
+  "id": "com.translateos.selftest.service",
+  "description": "SelfCap test service",
+  "services": [
+    {
+      "name": "com.translateos.selftest.service",
+      "description": "capture test"
+    }
+  ]
+}

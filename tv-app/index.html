@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TranslateOS Self-Test</title>
+<style>
+  body { margin: 0; background: #101418; color: #e8eef4; font: 26px/1.35 sans-serif; }
+  #wrap { display: flex; gap: 30px; padding: 40px; }
+  #log { flex: 1; white-space: pre-wrap; font-size: 22px; }
+  #img { width: 800px; border: 3px solid #3a8; background: #000; min-height: 450px; }
+  h1 { margin: 0 0 16px; font-size: 40px; }
+  .ok { color: #6e6; } .bad { color: #f77; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="log"><h1>TranslateOS — TV içinden ekran yakalama testi</h1></div>
+  <div><img id="img" alt=""><div id="tag"></div></div>
+</div>
+<script src="debug-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

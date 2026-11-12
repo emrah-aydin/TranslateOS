@@ -1,0 +1,15 @@
+{
+  "id": "com.translateos.overlaytest",
+  "version": "0.0.1",
+  "vendor": "TranslateOS",
+  "type": "web",
+  "main": "index.html",
+  "title": "TranslateOS Overlay Test",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "transparent": true,
+  "defaultWindowType": "overlay",
+  "bgColor": "transparent",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true
+}

@@ -1,0 +1,15 @@
+{
+  "name": "translateos",
+  "private": true,
+  "description": "LG webOS TV'de HDMI oyun görüntüsündeki altyazıyı okuyup çeviren uygulama (geliştirme aşamasında)",
+  "scripts": {
+    "setup": "npm install && npm install --prefix tv-service",
+    "package": "ares-package tv-app tv-service -o dist",
+    "install-tv": "ares-install -d tv dist/com.translateos.selftest_0.0.1_all.ipk",
+    "launch-tv": "ares-launch -d tv com.translateos.selftest",
+    "receiver": ".venv/bin/python tools/receiver.py"
+  },
+  "devDependencies": {
+    "@webos-tools/cli": "^3.2.6"
+  }
+}
