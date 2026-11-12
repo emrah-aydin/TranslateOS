@@ -52,7 +52,7 @@
     }
   }
   // Kutu koyuluğu: Türkçe varken %90; yeni İngilizceye "göz atarken" bir an %50 (servis net okuyabilsin).
-  var ALPHA_TEXT = 0.9, ALPHA_PEEK = 0.5, alpha = ALPHA_TEXT, hasText = false;
+  var ALPHA_TEXT = 0.9, ALPHA_PEEK = 0.75, alpha = ALPHA_TEXT, hasText = false;   // göz atma: göze daha az belli olsun (alttaki İngilizce 4 kat parlatılarak okunur)
   function setAlpha(a) { alpha = a; subEl.style.background = 'rgba(0,0,0,' + a + ')'; }
   function reportRect(peek) {
     // Servise kutunun gerçek yerini ve koyuluğunu bildir: altındaki İngilizceyi okumaya devam edebilsin.
