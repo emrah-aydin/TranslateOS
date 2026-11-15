@@ -832,20 +832,30 @@ function unpackBits(b64, n) { var buf = Buffer.from(b64, 'base64'), bits = new U
 try { if (FP_FILE && fs.existsSync(FP_FILE)) fpStore = JSON.parse(fs.readFileSync(FP_FILE, 'utf8')).map(function (e) { return { w: e.w, h: e.h, bits: unpackBits(e.b, 1920), en: e.en }; }); } catch (e) {}
 function fpLookup(fp) {
   if (!fp) return null;
-  var best = null, bestV = 0;
-  for (var i = 0; i < fpStore.length; i++) {
-    var e = fpStore[i]; if (Math.abs(e.w - fp.w) > 5 || Math.abs(e.h - fp.h) > 5) continue;
-    var v = fpSim(fp, e); if (v > bestV) { bestV = v; best = e; }
-  }
+  var best = null, bestV = 0, bestShared = false;
+  // Önce bu TV'nin kendi şekilleri, sonra herkesin ortak şekilleri (aynı oyun, aynı 960x540 kare: şekil TV'den TV'ye aynı)
+  [fpStore, sharedFps].forEach(function (store, si) {
+    for (var i = 0; i < store.length; i++) {
+      var e = store[i]; if (Math.abs(e.w - fp.w) > 5 || Math.abs(e.h - fp.h) > 5) continue;
+      var v = fpSim(fp, e); if (v > bestV) { bestV = v; best = e; bestShared = si === 1; }
+    }
+  });
   if (!best || bestV < FP_MATCH) return null;
   var tr = memLookup(normEn(best.en));
-  return tr ? { en: best.en, tr: tr, sim: bestV } : null;
+  return tr ? { en: best.en, tr: tr, sim: bestV, shared: bestShared } : null;
 }
 function fpRemember(fp, en) {
   if (!fp || !en) return;
   for (var i = 0; i < fpStore.length; i++) if (fpStore[i].en === en && fpSim(fp, fpStore[i]) > 0.95) return;   // zaten var
   fpStore.push({ w: fp.w, h: fp.h, bits: fp.bits, en: en }); if (fpStore.length > 5000) fpStore.shift();
   fpDirty = true;
+  // Ortak şekil hafızasına da gönder (cümleyle birlikte; cümle havuzda zaten varsa sadece şekli eklenir)
+  if (!sharedOn() || fp.w < 0.3 * 960) return;   // kısa satırın şekli yanıltıcı: paylaşma
+  var k = normEn(en), fpx = { w: fp.w, h: fp.h, b: packBits(fp.bits) };
+  for (var j = 0; j < sharedQueue.length; j++) if (normEn(sharedQueue[j].en) === k) { sharedQueue[j].fp = fpx; return; }
+  if (sharedFpKeys[k]) return;
+  var tr = cacheByEn[k] || sharedByEn[k];
+  if (tr && sharedQueue.length < 500) sharedQueue.push({ en: en, tr: tr, fp: fpx });
 }
 setInterval(function () {
   if (!fpDirty || !FP_FILE) return; fpDirty = false;
@@ -868,9 +878,19 @@ function memLookup(k) { return (k && (cacheByEn[k] || sharedByEn[k])) || null; }
 // sadece İngilizce cümle ve Türkçesi. Kapatmak için settings.json: { "share": false }
 var SHARED_URL = CONFIG.sharedServer || 'https://translateos.translate-os.workers.dev';
 var sharedByEn = {}, sharedSince = 0, sharedQueue = [], sharedBusy = false, sharedLastSync = 0;
+var sharedFps = [], sharedFpKeys = {}, sharedFpRaw = [];   // ortak şekil hafızası: [{ w, h, bits, en }]
+function addSharedFps(list) {
+  var n = 0, seen = {};
+  sharedFpRaw.forEach(function (r) { seen[r[0] + '|' + r[1] + '|' + r[2]] = 1; });
+  (list || []).forEach(function (r) {
+    var id = r[0] + '|' + r[1] + '|' + r[2]; if (seen[id]) return; seen[id] = 1;
+    try { sharedFps.push({ w: r[1], h: r[2], bits: unpackBits(r[3], 1920), en: r[0] }); sharedFpKeys[r[0]] = 1; sharedFpRaw.push(r); n++; } catch (e) {}
+  });
+  return n;
+}
 var SHARED_FILE = path.join(__dirname, 'shared.json');
 var sharedAgent = new https.Agent({ keepAlive: true, maxSockets: 2 });
-try { var sj = JSON.parse(fs.readFileSync(SHARED_FILE, 'utf8')); sharedByEn = sj.lines || {}; sharedSince = sj.since || 0; } catch (e) {}
+try { var sj = JSON.parse(fs.readFileSync(SHARED_FILE, 'utf8')); sharedByEn = sj.lines || {}; sharedSince = sj.since || 0; addSharedFps(sj.fps); } catch (e) {}
 function sharedOn() { return SETTINGS.share !== false && !!SHARED_URL; }
 function sharedReq(method, p, body) {
   return new Promise(function (resolve) {
@@ -904,8 +924,9 @@ async function sharedSync() {
     if (r.status === 200 && r.json && r.json.lines) {
       var n = 0; Object.keys(r.json.lines).forEach(function (k) { if (sharedByEn[k] !== r.json.lines[k]) n++; sharedByEn[k] = r.json.lines[k]; });
       sharedSince = r.json.now || Date.now(); sharedLastSync = Date.now();
-      if (n) writeFileSafe(SHARED_FILE, JSON.stringify({ since: sharedSince, lines: sharedByEn }), function () {});
-      log('Ortak hafıza: ' + Object.keys(sharedByEn).length + ' cümle (' + n + ' yeni)');
+      var nf = addSharedFps(r.json.fps);
+      if (n || nf) writeFileSafe(SHARED_FILE, JSON.stringify({ since: sharedSince, lines: sharedByEn, fps: sharedFpRaw }), function () {});
+      log('Ortak hafıza: ' + Object.keys(sharedByEn).length + ' cümle (' + n + ' yeni), ' + sharedFps.length + ' şekil (' + nf + ' yeni)');
       if (full) setTimeout(function () { sharedSync().catch(function () {}); }, 3000);   // tam paket birkaç dk eski olabilir: hemen yenileri de al
     } else log('Ortak hafıza alınamadı (' + r.status + ')');
   } finally { sharedBusy = false; }
@@ -1165,7 +1186,7 @@ async function loop() {
             hit = { en: fpHit.en, tr: fpHit.tr };
             stats.cacheHits++; stats.fpHits = (stats.fpHits || 0) + 1;
             show(seq, sig, hit, null, sig.bbox);
-            log('PARMAK İZİ (benzerlik ' + fpHit.sim.toFixed(2) + '): ' + fpHit.en);
+            log('PARMAK İZİ' + (fpHit.shared ? ' (ORTAK HAVUZ)' : '') + ' (benzerlik ' + fpHit.sim.toFixed(2) + '): ' + fpHit.en);
             event({ tur: 'gösterildi', kaynak: 'parmak_izi', en: fpHit.en, tr: fpHit.tr, benzerlik: +fpHit.sim.toFixed(3), gecikme_ms: 0, yakalama_ms: fr.capMs });
           }
           else if (hit) { stats.cacheHits++; show(seq, sig, hit, null, sig.bbox); event({ tur: 'gösterildi', kaynak: 'aynı_görüntü', en: hit.en, tr: hit.tr, gecikme_ms: 0 }); }

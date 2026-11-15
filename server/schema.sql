@@ -34,3 +34,15 @@ CREATE TABLE IF NOT EXISTS usage (
   day TEXT PRIMARY KEY,
   n INTEGER DEFAULT 0
 );
+
+-- Ortak şekil hafızası: altyazı yazısının görüntüdeki deseni → cümle (Gemini'ye sormadan tanımak için)
+CREATE TABLE IF NOT EXISTS fps (
+  k TEXT NOT NULL,             -- lines.k
+  w INTEGER NOT NULL,          -- yazının genişliği / yüksekliği (piksel, 960x540 kare)
+  h INTEGER NOT NULL,
+  b TEXT NOT NULL,             -- 1920 bitlik desen (base64)
+  device TEXT,
+  created INTEGER NOT NULL,
+  PRIMARY KEY (k, w, h)
+);
+CREATE INDEX IF NOT EXISTS fps_created ON fps(created);

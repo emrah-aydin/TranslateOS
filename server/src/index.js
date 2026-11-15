@@ -42,6 +42,13 @@ function safeEqual(a, b) {
 }
 const today = () => new Date().toISOString().slice(0, 10);
 const minConfirm = (env) => Number(env.MIN_CONFIRM || MIN_CONFIRM);
+// Ortak şekil hafızası: onaylı cümlelerin yazı şekilleri → [k, w, h, b]. TV aynı altyazıyı Gemini'ye sormadan tanır.
+async function packFps(env, since) {
+  const { results } = await env.DB.prepare(
+    'SELECT f.k AS k, f.w AS w, f.h AS h, f.b AS b FROM fps f JOIN lines l ON l.k = f.k WHERE l.confirm >= ? AND f.created > ? LIMIT 30000'
+  ).bind(minConfirm(env), since || 0).all();
+  return results.map((r) => [r.k, r.w, r.h, r.b]);
+}
 
 // --- Anahtarsız mod: TV'nin Gemini isteğini sunucunun anahtarıyla iletir ---
 async function geminiProxy(req, env, url, model, method) {
@@ -113,13 +120,14 @@ export default {
           if (hit) return hit;
           const { results } = await env.DB.prepare('SELECT k, tr FROM lines WHERE confirm >= ?').bind(minConfirm(env)).all();
           const lines = {}; for (const r of results) lines[r.k] = r.tr;
-          const res = json({ now, lines }, 200, { 'Cache-Control': `public, max-age=${PACK_CACHE_SEC}` });
+          const fps = await packFps(env, 0);
+          const res = json({ now, lines, fps }, 200, { 'Cache-Control': `public, max-age=${PACK_CACHE_SEC}` });
           ctx.waitUntil(cache.put(ck, res.clone()));
           return res;
         }
         const { results } = await env.DB.prepare('SELECT k, tr FROM lines WHERE updated > ? AND confirm >= ?').bind(since - 60000, minConfirm(env)).all();
         const lines = {}; for (const r of results) lines[r.k] = r.tr;
-        return json({ now, lines });
+        return json({ now, lines, fps: await packFps(env, since - 60000) });
       }
 
       if (path === '/v1/add' && req.method === 'POST') {
@@ -129,7 +137,13 @@ export default {
         const dev = await env.DB.prepare('SELECT day, adds, banned FROM devices WHERE id = ?').bind(device).first();
         if (!dev) return json({ error: 'kimlik geçersiz' }, 401);
         if (dev.banned) return json({ added: 0 });
-        const items = (Array.isArray(body.lines) ? body.lines : []).slice(0, MAX_BATCH).map((l) => validLine(l && l.en, l && l.tr)).filter(Boolean);
+        const items = (Array.isArray(body.lines) ? body.lines : []).slice(0, MAX_BATCH).map((l) => {
+          const v = validLine(l && l.en, l && l.tr); if (!v) return null;
+          const fp = l.fp;   // yazının şekli: { w, h, b } (b: 1920 bitlik desen, base64)
+          if (fp && Number.isInteger(fp.w) && Number.isInteger(fp.h) && fp.w > 0 && fp.w < 1000 && fp.h > 0 && fp.h < 200 &&
+              typeof fp.b === 'string' && fp.b.length <= 400 && /^[A-Za-z0-9+/=]+$/.test(fp.b)) v.fp = fp;
+          return v;
+        }).filter(Boolean);
         const used = dev.day === today() ? dev.adds : 0;
         const room = Math.max(0, DAILY_ADDS - used);
         const take = items.slice(0, room);
@@ -145,6 +159,8 @@ export default {
           'confirm = CASE WHEN lines.device != excluded.device THEN MAX(lines.confirm + 1, excluded.confirm) ELSE MAX(lines.confirm, excluded.confirm) END, ' +
           'updated = CASE WHEN lines.device != excluded.device OR excluded.confirm > lines.confirm THEN excluded.updated ELSE lines.updated END'
         ).bind(l.k, l.en, l.tr, device, first, now, now));
+        for (const l of take) if (l.fp) stmts.push(env.DB.prepare(
+          'INSERT OR IGNORE INTO fps (k, w, h, b, device, created) VALUES (?, ?, ?, ?, ?, ?)').bind(l.k, l.fp.w, l.fp.h, l.fp.b, device, now));
         stmts.push(env.DB.prepare('UPDATE devices SET day = ?, adds = ? WHERE id = ?').bind(today(), used + take.length, device));
         await env.DB.batch(stmts);
         return json({ added: take.length });
@@ -165,6 +181,7 @@ export default {
         if (!env.ADMIN_KEY || !safeEqual(auth, 'Bearer ' + env.ADMIN_KEY)) return json({ error: 'yetkisiz' }, 401);
         const { device } = await req.json().catch(() => ({}));
         if (!device) return json({ error: 'device gerekli' }, 400);
+        await env.DB.prepare('DELETE FROM fps WHERE device = ?').bind(device).run();
         const r = await env.DB.prepare('DELETE FROM lines WHERE device = ?').bind(device).run();
         await env.DB.prepare('UPDATE devices SET banned = 1 WHERE id = ?').bind(device).run();
         return json({ deleted: r.meta.changes });
