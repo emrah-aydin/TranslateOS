@@ -65,6 +65,8 @@
   #menu .key { flex: none; min-width: 64px; height: 32px; padding: 0 10px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
     border-radius: 8px; font-size: 15px; font-weight: 800; letter-spacing: .3px; color: #e9f2fb; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.24); }
   #menu .key.blue { background: #2f6fe0; border-color: #5b93ff; color: #fff; }
+  #menu .key.yellow { background: #d9a400; border-color: #ffd23f; color: #1a1300; }
+  #menu .row + .keys { margin-top: 10px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.08); }
   #menu .credit { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.08); font-size: 16px; line-height: 1.8; }
   #menu .credit .ln { display: flex; align-items: center; gap: 8px; }
   #menu .credit svg { width: 18px; height: 18px; flex: none; }
@@ -118,8 +120,10 @@
 
 <div id="menu">
   <h1><img class="mark" src="img/logo-96.png" alt=""><span>Translate<b>OS</b></span></h1>
+  <div class="row"><span>Çeviri yeri</span><span id="m-place">Üstte</span></div>
   <div class="keys">
     <div class="k"><span class="key">OK</span><span>Menüyü aç / kapat</span></div>
+    <div class="k"><span class="key yellow">Sarı</span><span>Çeviriyi üste / alta al</span></div>
     <div class="k"><span class="key">1–4</span><span>HDMI girişini değiştir</span></div>
     <div class="k"><span class="key">Geri</span><span>Çeviriden çık</span></div>
     <div class="k"><span class="key blue">Mavi</span><span>Kendi Gemini anahtarını gir</span></div>

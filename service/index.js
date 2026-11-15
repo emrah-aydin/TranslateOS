@@ -19,7 +19,6 @@ try { CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.jso
 var SETTINGS_FILE = path.join(__dirname, 'settings.json'), SETTINGS = {};
 try { SETTINGS = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch (e) {}
 if (SETTINGS.geminiKey) CONFIG.geminiKey = SETTINGS.geminiKey;
-if (SETTINGS.placement) { delete SETTINGS.placement; }   // eski sürümden kalan yerleşim seçimi artık yok
 // Dosyayı önce geçici adla yazıp yerine taşır: yarım kalmaz, eski dosyanın sahibi/izni engel olmaz.
 function writeFileSafe(file, data, cb) {
   var tmp = file + '.tmp';
@@ -31,7 +30,8 @@ function writeFileSafe(file, data, cb) {
 function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE + '.tmp', JSON.stringify(SETTINGS)); fs.renameSync(SETTINGS_FILE + '.tmp', SETTINGS_FILE); return true; } catch (e) { return false; } }
 var MODEL = CONFIG.model || 'gemini-flash-lite-latest';  // TV'den ölçüm: 0,7–1,0 sn (kalıcı bağlantıyla)
 var KEY_FILE = '/tmp/translateos_app_client_key';
-var placement = CONFIG.placement === 'cover' ? 'cover' : 'above';   // Türkçe İngilizcenin hemen üstünde (örtmez: İngilizce her an net okunur, karışmaz)
+// Çeviri yeri: 'above' (varsayılan) Türkçe İngilizcenin üstünde · 'cover' Türkçe İngilizcenin yerine (örter). Sarı tuşla değişir, hatırlanır.
+var placement = (SETTINGS.placement || CONFIG.placement) === 'cover' ? 'cover' : 'above';
 
 // Altyazı bölgesi (kare oranı). Türkçe kutumuz bunun ÜSTÜNDE durur, bu yüzden bu bölgeye girmez.
 var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.865, y1: 1.0 };
@@ -978,7 +978,7 @@ async function loop() {
   function readTime(tr) { return Math.max(2500, Math.min(7000, 1800 + String(tr).length * 55)); }
   function union(a, b) { if (!a) return b; if (!b) return a; return { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) }; }
   function openBox(msg) { if (!boxOpen) peekSawEmpty = false; boxOpen = true; if (msg.bbox) boxBbox = union(boxBbox, msg.bbox), msg.bbox = boxBbox; msg.placement = placement; emit(msg); }
-  function closeBox() { peekSince = 0; if (boxOpen) { event({ tur: 'kapandı', tr: shown }); boxOpen = false; peekSawEmpty = false; shown = ''; lines = []; shownSig = null; pendingSince = 0; boxBbox = null; emit({ clear: true }); } }
+  function closeBox() { peekSince = 0; if (boxOpen) { event({ tur: 'kapandı', tr: shown }); if (lines.length) prevLine = { tr: lines[lines.length - 1].tr, en: lines[lines.length - 1].en, at: Date.now() }; boxOpen = false; peekSawEmpty = false; shown = ''; lines = []; shownSig = null; pendingSince = 0; boxBbox = null; emit({ clear: true }); } }
   // İngilizce, kutunun örttüğü alandan taştıysa (ör. ikinci satır geldi) kutuyu büyüt.
   function growBox(b) {
     if (!boxOpen || !b || !boxBbox) return;
@@ -990,13 +990,14 @@ async function loop() {
   var latestShownSeq = 0;
   // Ekrandaki Türkçe satırlar: yeni cümle eskisini SİLMEZ, altına eklenir. En fazla 3 cümle; her biri okuma süresi kadar
   // (uzunluğuna göre 2,5–7 sn) kalır, süresi dolan üstten düşer. Geç gelen eski cümle, en yeninin üstüne yerleşir.
-  var lines = [], recentShown = {};   // { tr, en, until } · recentShown: normalleştirilmiş İngilizce → son gösterim zamanı
+  var lines = [], recentShown = {}, prevLine = null;   // { tr, en, until } · recentShown: İngilizce → son gösterim · prevLine: kutu kapanırken son cümle
   var incompleteAt = 0;   // son cümle noktalama işaretiyle bitmedi: devamı için yeniden okunacak
   function endsSentence(en) { return /[.!?…]["'”’)\]]*\s*$/.test(String(en || '')); }
   function linesText() { return lines.map(function (e) { return e.tr; }).join('\n'); }
   function pushLine(tr, older, en) {
     var now = Date.now();
-    lines = lines.filter(function (e) { return e.until > now; });
+    lines = lines.filter(function (e, i) { return e.until > now || i === lines.length - 1; });   // bir önceki cümle hep kalır
+    if (!lines.length && prevLine && now - prevLine.at < 20000) lines = [{ tr: prevLine.tr, en: prevLine.en, until: now }];
     // Aynı cümlenin devamı geldiyse (ilk okumada ikinci satır eksikti) son satırı tam haliyle değiştir
     var last = lines[lines.length - 1], ne = normEn(en || '');
     if (!older && last && last.en && ne && ne !== normEn(last.en) && ne.indexOf(normEn(last.en)) === 0) {
@@ -1021,8 +1022,7 @@ async function loop() {
   // Süresi dolan üst satırları düşür (en yeni satır, İngilizce ekrandayken kalır)
   function pruneLines() {
     if (!boxOpen || lines.length < 2) return;
-    var now = Date.now(), keep = lines.filter(function (e) { return e.until > now; });
-    if (!keep.length) keep = [lines[lines.length - 1]];
+    var now = Date.now(), n = lines.length, keep = lines.filter(function (e, i) { return e.until > now || i >= n - 2; });   // bir önceki + en yeni hep kalır
     if (keep.length < lines.length) { lines = keep; shown = linesText(); emit({ tr: shown, keep: true }); }
   }
   function show(seq, sig, out, ms, bbox) {
@@ -1356,7 +1356,7 @@ service.register('start', function (message) {
 service.register('stop', function (m) { running = false; m.respond({ returnValue: true }); });
 service.register('setPlacement', function (m) {
   var p = m.payload && m.payload.placement;
-  if (p === 'cover' || p === 'above') { placement = p; log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
+  if (p === 'cover' || p === 'above') { placement = p; SETTINGS.placement = p; saveSettings(); log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
   m.respond({ returnValue: true, placement: placement });
 });
 service.register('boxRect', function (m) {

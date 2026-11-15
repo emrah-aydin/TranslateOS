@@ -183,6 +183,8 @@
   function refreshMenu() {
     luna('stats', SVC + 'stats', {}, function (r) {
       if (r.placement) placement = r.placement;
+      document.getElementById('m-place').textContent = placement === 'above' ? 'Üstte' : 'Altta';
+      if (r.placement) placement = r.placement;
     });
   }
   function toggleMenu(show) {
@@ -299,7 +301,14 @@
   }, 10000);
 
   document.addEventListener('keydown', function (e) {
-    if (e.keyCode === KEY.BLUE) {
+    if (e.keyCode === KEY.YELLOW) {
+      placement = placement === 'above' ? 'cover' : 'above';
+      luna('place', SVC + 'setPlacement', { placement: placement });
+      if (subEl.style.display !== 'none') { placeBox(lastBbox); reportRect(); }
+      status(placement === 'above' ? 'Çeviri yeri: üstte' : 'Çeviri yeri: altta (İngilizcenin yerine)', 3000);
+      if (menuEl.style.display === 'block') refreshMenu();
+      e.preventDefault();
+    } else if (e.keyCode === KEY.BLUE) {
       if (setupEl.style.display === 'block') hideSetup(); else showSetup();
       e.preventDefault();
     } else if (e.keyCode === KEY.GREEN || e.keyCode === KEY.OK) {
