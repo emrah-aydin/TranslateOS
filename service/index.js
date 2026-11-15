@@ -989,7 +989,7 @@ async function loop() {
   var latestShownSeq = 0;
   // Ekrandaki Türkçe satırlar: yeni cümle eskisini SİLMEZ, altına eklenir. En fazla 3 cümle; her biri okuma süresi kadar
   // (uzunluğuna göre 2,5–7 sn) kalır, süresi dolan üstten düşer. Geç gelen eski cümle, en yeninin üstüne yerleşir.
-  var lines = [];   // { tr, en, until }
+  var lines = [], recentShown = {};   // { tr, en, until } · recentShown: normalleştirilmiş İngilizce → son gösterim zamanı
   var incompleteAt = 0;   // son cümle noktalama işaretiyle bitmedi: devamı için yeniden okunacak
   function endsSentence(en) { return /[.!?…]["'”’)\]]*\s*$/.test(String(en || '')); }
   function linesText() { return lines.map(function (e) { return e.tr; }).join('\n'); }
@@ -1004,6 +1004,9 @@ async function loop() {
       return true;
     }
     for (var i = 0; i < lines.length; i++) if (lines[i].tr === tr) { lines[i].until = Math.max(lines[i].until, now + 1500); return false; }
+    var rk = normEn(en || tr);
+    if (rk && recentShown[rk] && now - recentShown[rk] < 10000) return false;   // az önce gösterildi, süresi doldu: tekrar yazma
+    if (rk) recentShown[rk] = now;
     var e = { tr: tr, en: en || '', until: now + readTime(tr) };
     if (older && lines.length) lines.splice(lines.length - 1, 0, e); else lines.push(e);
     while (lines.length > 3) lines.shift();
