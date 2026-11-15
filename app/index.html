@@ -19,6 +19,14 @@
     transition: background-color .6s ease, box-shadow .6s ease;
   }
 
+  /* Sol üst ipucu: İngilizce ipucu kutusunun TAM ÜZERİNDE, %90 koyu (servis altındaki İngilizceyi okumaya devam eder) */
+  #help {
+    position: absolute; display: none; box-sizing: border-box; max-width: 900px;
+    padding: 10px 16px; border-radius: 4px; background: rgba(0,0,0,.9); color: #fff;
+    font: 500 26px/1.35 sans-serif; text-align: left; white-space: pre-line;
+  }
+  #help .btn { display: inline-block; vertical-align: -5px; width: 28px; height: 28px; margin: 0 2px; }
+  #help .lbl { display: inline-block; padding: 0 6px; margin: 0 2px; border-radius: 5px; border: 2px solid #fff; font-size: 18px; line-height: 22px; vertical-align: 2px; }
   /* Durum yazısı (sağ üst, kısa süreli) */
   #status {
     position: absolute; left: 32px; top: 108px; padding: 8px 16px; border-radius: 8px;
@@ -78,6 +86,7 @@
 <body>
 <div id="hdmi"></div>
 <div id="sub"></div>
+<div id="help"></div>
 <div id="status"></div>
 
 <div id="badge">

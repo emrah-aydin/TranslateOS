@@ -98,6 +98,44 @@
     }
     reportRect(peek);
   }
+  // Sol üst ipucunun Türkçesi: İngilizce kutunun tam üzerinde; (O), (X) gibi tuşlar PlayStation simgesiyle çizilir
+  var helpEl = document.getElementById('help');
+  var BTN = {
+    'X': '<svg class="btn" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="#1c1c1c" stroke="#fff" stroke-width="1.5"/><path d="M9 9l10 10M19 9L9 19" stroke="#7aa7ff" stroke-width="2.6" stroke-linecap="round"/></svg>',
+    'O': '<svg class="btn" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="#1c1c1c" stroke="#fff" stroke-width="1.5"/><circle cx="14" cy="14" r="5.5" fill="none" stroke="#ff5a6a" stroke-width="2.6"/></svg>',
+    '△': '<svg class="btn" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="#1c1c1c" stroke="#fff" stroke-width="1.5"/><path d="M14 8l6 10H8z" fill="none" stroke="#3fd6a6" stroke-width="2.4" stroke-linejoin="round"/></svg>',
+    '□': '<svg class="btn" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="#1c1c1c" stroke="#fff" stroke-width="1.5"/><rect x="9" y="9" width="10" height="10" fill="none" stroke="#f08ad6" stroke-width="2.4"/></svg>'
+  };
+  BTN['○'] = BTN['O']; BTN['×'] = BTN['X']; BTN['TRIANGLE'] = BTN['△']; BTN['SQUARE'] = BTN['□']; BTN['CIRCLE'] = BTN['O']; BTN['CROSS'] = BTN['X'];
+  function helpHtml(t) {
+    var esc = String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+    return esc.replace(/\(([^()\s]{1,10})\)/g, function (m, k) {
+      var key = k.toUpperCase();
+      if (BTN[key] || BTN[k]) return BTN[key] || BTN[k];
+      if (/^(L[123]|R[123]|OPTIONS|TOUCHPAD|UP|DOWN|LEFT|RIGHT|SHARE)$/.test(key)) {
+        var lab = { UP: '↑', DOWN: '↓', LEFT: '←', RIGHT: '→', TOUCHPAD: 'Dokunmatik', OPTIONS: 'OPTIONS', SHARE: 'SHARE' }[key] || key;
+        return '<span class="lbl">' + lab + '</span>';
+      }
+      return m;
+    });
+  }
+  function reportHelpRect() {
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      if (helpEl.style.display === 'none') { luna('helprect', SVC + 'helpRect', { none: true }); return; }
+      var r = helpEl.getBoundingClientRect();
+      luna('helprect', SVC + 'helpRect', { x0: (r.left - 2) / W, y0: (r.top - 2) / H, x1: (r.right + 2) / W, y1: (r.bottom + 2) / H, alpha: 0.9 });
+    }); });
+  }
+  function showHelp(h) {
+    if (!h || !h.tr || !enabled) { helpEl.style.display = 'none'; reportHelpRect(); return; }
+    helpEl.innerHTML = helpHtml(h.tr);
+    helpEl.style.left = Math.round(h.x0 * W - 18) + 'px';
+    helpEl.style.top = Math.round(h.y0 * H - 14) + 'px';
+    helpEl.style.minWidth = Math.round((h.x1 - h.x0) * W + 36) + 'px';
+    helpEl.style.minHeight = Math.round((h.y1 - h.y0) * H + 28) + 'px';
+    helpEl.style.display = 'block';
+    reportHelpRect();
+  }
   function hideSub() {
     if (subEl.style.display === 'none') return;
     subEl.style.display = 'none';
@@ -230,6 +268,7 @@
       if (r.peekEnd && subEl.style.display !== 'none') { setAlpha(ALPHA_TEXT); reportRect(); }
       if (r.placement) placement = r.placement;
       if (r.bg) { bg = r.bg; paint(); }
+      if (r.help !== undefined) showHelp(r.help);
       if (r.tr) showSub(r.tr, r.bbox);
       else if (r.bbox && !r.pending && subEl.style.display !== 'none') {
         // İngilizce büyüdü (ör. yeni satır geldi): örtü büyüsün / üstteki kutu gerekirse yukarı çıksın
