@@ -86,6 +86,7 @@ Senin TV'n listede yoksa dene ve sonucu [issue olarak bildir](../../issues). Lis
 Kısaca:
 1. TV'de **Developer Mode**'u aç (ücretsiz LG geliştirici hesabıyla), **Key Server**'ı da aç.
 2. Kurulum programını aç:
+   - **Android telefon (bilgisayar gerekmez):** [son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS-Kurulum.apk` dosyasını telefona indir ve kur.
    - **Mac:** Terminal'e yapıştır: `curl -fsSL https://raw.githubusercontent.com/emrah-aydin/TranslateOS/main/install.sh | sh`
    - **Windows:** [son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS-Kurulum.exe` dosyasını indir ve aç.
 3. Programı aç. TV'ni kendisi bulur; TV'deki 6 haneli kodu yaz, **Kur**'a bas. TranslateOS TV'de açılır.
@@ -107,6 +108,7 @@ Geliştirme sırasında anahtar ve test ayarları `service/config.local.json` do
 ## Yol haritası
 
 - [x] Windows ve Mac için tek tıklık kurulum programı
+- [x] Android telefondan kurulum (bilgisayarsız)
 - [x] Developer Mode süresini kendiliğinden uzatma
 - [x] İsteğe bağlı: kendi Gemini anahtarını TV'de QR kodla girme
 - [x] Ortak çeviri hafızası: bir kişinin çevirdiği cümle herkese anında ve ücretsiz gelsin

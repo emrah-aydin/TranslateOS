@@ -5,7 +5,7 @@ LG webOS TV'ye TranslateOS'u kurmak yaklaşık **10 dakika** sürer. Bir kez yap
 **Gerekenler:**
 - LG webOS akıllı TV (test edilen: LG 55QNED7EB3C, webOS 26). Diğer modeller için [uyumluluk listesine](../README.md#desteklenen-tvler) bak.
 - PS5 (ya da altyazılı oyun gösteren herhangi bir cihaz), TV'ye HDMI ile bağlı.
-- Bilgisayar (Windows ya da Mac). Sadece kurulum için, bir kez; sonra gerekmez.
+- Android telefon ya da bilgisayar (Windows / Mac). Sadece kurulum için, bir kez; sonra gerekmez.
 - Telefon gerekmez (sadece isteğe bağlı kendi Gemini anahtarını girmek için).
 - TV, bilgisayar ve telefon **aynı Wi-Fi** ağında olmalı.
 
@@ -27,6 +27,13 @@ LG webOS TV'ye TranslateOS'u kurmak yaklaşık **10 dakika** sürer. Bir kez yap
 > Developer Mode süreli çalışır. TranslateOS bu süreyi her açılışta kontrol eder ve azaldığında **kendiliğinden uzatır**. 
 
 ## 3. Kurulum programını aç
+
+**Android telefon (en kolayı, bilgisayar gerekmez):**
+
+1. [Son sürüm sayfasından](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS-Kurulum.apk` dosyasını telefonuna indir ve aç.
+2. Telefon "bilinmeyen kaynaktan yükleme" iznini sorarsa **İzin ver** de, kurulumu tamamla.
+3. **TranslateOS** uygulamasını aç. Aynı Wi-Fi'deki TV'ni kendisi bulur; Developer Mode ve Key Server'ın açık olup olmadığını gösterir.
+4. TV'deki 6 karakterli kodu yaz, **TranslateOS'u kur**'a bas. Kurulum bitince TranslateOS TV'de açılır.
 
 **Mac (önerilen, uyarısız):** **Terminal** uygulamasını aç (Spotlight'ta "Terminal" yaz), şu satırı yapıştır ve Enter'a bas:
 
