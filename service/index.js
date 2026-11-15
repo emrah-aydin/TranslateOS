@@ -930,7 +930,7 @@ setInterval(function () {
   memoryDirty = false;
   writeFileSafe(MEMORY_FILE, JSON.stringify(cacheByEn), function (e) { if (e) { memoryDirty = true; log('hafıza yazılamadı: ' + e.message); } });
 }, 5000);
-var reqSeq = 0, inFlight = 0, lastReqAt = 0, safetyRead = false, freshNext = false, safetyGap = 1800, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0, lastColorAt = 0, lastColor = null;
+var reqSeq = 0, inFlight = 0, lastReqAt = 0, safetyRead = false, freshNext = false, safetyGap = 1800, peekSawEmpty = false, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0, lastColorAt = 0, lastColor = null;
 var shade = null, rebase = false, peekAckAt = 0;   // ekrandaki Türkçe kutunun yeri (kare oranı) — uygulama bildirir
 
 // Yakalama: iki istek üst üste (TV her biri için ~340 ms harcıyor); en son kare işlenir.
@@ -976,8 +976,8 @@ async function loop() {
   // Okuma süresi: Türkçe, İngilizce erken kalksa bile en az bu kadar ekranda kalır (yeni cümle gelirse onun yerine geçer).
   function readTime(tr) { return Math.max(2500, Math.min(7000, 1800 + String(tr).length * 55)); }
   function union(a, b) { if (!a) return b; if (!b) return a; return { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) }; }
-  function openBox(msg) { boxOpen = true; if (msg.bbox) boxBbox = union(boxBbox, msg.bbox), msg.bbox = boxBbox; msg.placement = placement; emit(msg); }
-  function closeBox() { peekSince = 0; if (boxOpen) { event({ tur: 'kapandı', tr: shown }); boxOpen = false; shown = ''; lines = []; shownSig = null; pendingSince = 0; boxBbox = null; emit({ clear: true }); } }
+  function openBox(msg) { if (!boxOpen) peekSawEmpty = false; boxOpen = true; if (msg.bbox) boxBbox = union(boxBbox, msg.bbox), msg.bbox = boxBbox; msg.placement = placement; emit(msg); }
+  function closeBox() { peekSince = 0; if (boxOpen) { event({ tur: 'kapandı', tr: shown }); boxOpen = false; peekSawEmpty = false; shown = ''; lines = []; shownSig = null; pendingSince = 0; boxBbox = null; emit({ clear: true }); } }
   // İngilizce, kutunun örttüğü alandan taştıysa (ör. ikinci satır geldi) kutuyu büyüt.
   function growBox(b) {
     if (!boxOpen || !b || !boxBbox) return;
@@ -1087,15 +1087,32 @@ async function loop() {
           }
         }
       }
+      // Kutu açıkken düzenli göz at: Türkçe kutu İngilizceyi örttüğü için altı "yazı yok" görünebilir ve yeni cümle
+      // fark edilmez. Yazı görünsün görünmesin, kutu açık olduğu sürece kutu bir an hafifçe açılır ve net kare okunur.
+      if (placement === 'cover' && boxOpen && !peekSince && inFlight === 0 && Date.now() > quotaUntil &&
+          Date.now() - Math.max(lastReqAt, lastPeekAt) > safetyGap) {
+        peekSince = Date.now(); peekAckAt = 0; lastPeekAt = Date.now(); emit({ peek: true, soft: true });
+        freshNext = true; lastSentSig = null; emptyFrames = 0; stats.safety = (stats.safety || 0) + 1; event({ tur: 'güvence_okuması' });
+        continue;
+      }
       if (!hasText) {
+        if (peekSince) {   // göz atma karesinde yazı yok: İngilizce gerçekten bitmiş; kutuyu eski koyuluğuna döndür
+          var rdy = peekAckAt && fr.startedAt > peekAckAt;
+          if (!rdy && Date.now() - peekSince < 2000) continue;
+          peekSince = 0; freshNext = false; peekSawEmpty = true; emit({ peekEnd: true });
+        }
         emptyFrames++;
         if (emptyFrames >= 2) {
           lastSentSig = null;
           if (shown && Date.now() < minUntil) { /* okuma süresi dolmadı: Türkçe kalsın */ }
+          else if (placement === 'cover' && boxOpen && !peekSawEmpty) {
+            // Kutu İngilizceyi örtüyor: "yazı yok" görünmesi yanıltıcı olabilir. Kapatmadan önce net bir kareyle bak.
+            if (!peekSince && inFlight === 0) { peekSince = Date.now(); peekAckAt = 0; lastPeekAt = Date.now(); emit({ peek: true, soft: true }); }
+          }
           else { reqSeq++; closeBox(); }
         }
       } else {
-        emptyFrames = 0;
+        emptyFrames = 0; peekSawEmpty = false;
         if (peekSince) {
           var ready = peekAckAt && fr.startedAt > peekAckAt;
           if (!ready && Date.now() - peekSince < 2000) continue;          // göz atma karesini bekle
@@ -1110,11 +1127,6 @@ async function loop() {
           if (boxOpen && placement === 'cover') { peekSince = Date.now(); peekAckAt = 0; lastPeekAt = Date.now(); emit({ peek: true }); }
           lastSentSig = null; freshNext = true; event({ tur: 'yarım_cümle_okuması' });
           if (peekSince) continue;
-        }
-        if (boxOpen && inFlight === 0 && !peekSince && Date.now() - lastReqAt > safetyGap && Date.now() > quotaUntil && sigDiff(sig, lastSentSig) <= CHANGED) {
-          // Kutunun altı karanlıkta okunamıyor: kutu bir an hafifçe açılır (göz atma), sonraki net kareyle okunur
-          if (placement === 'cover') { peekSince = Date.now(); peekAckAt = 0; lastPeekAt = Date.now(); emit({ peek: true, soft: true }); freshNext = true; stats.safety = (stats.safety || 0) + 1; event({ tur: 'güvence_okuması' }); lastSentSig = null; continue; }
-          lastSentSig = null; safetyRead = true;
         }
         if (sigDiff(sig, lastSentSig) > CHANGED) {   // yeni / farklı yazı
           // Altyazı belirirken solup parlar: uçuşta aynı yazı için istek varsa yenisini gönderme.
@@ -1144,7 +1156,7 @@ async function loop() {
           if (safetyRead) { stats.safety = (stats.safety || 0) + 1; event({ tur: 'güvence_okuması' }); }
           // (Not: şekil benzerliğiyle 'aynı cümle' tahmini kısa satırlarda yanlış eşleştirdi; kaldırıldı. Doğruluk önce.)
           lastTiming = 'yakalama ' + fr.capMs + ' ms, çözme ' + (tSig - tDec) + ' ms, imza ' + (Date.now() - tSig) + ' ms';
-          var fpHit = !hit && !underBox && !fresh && sig.bbox && fpLookup(sig.bbox.fp);
+          var fpHit = !hit && !underBox && !fresh && sig.bbox && (sig.bbox.x1 - sig.bbox.x0) > 0.3 && fpLookup(sig.bbox.fp);   // kısa satırda şekil benzerliği yanıltır
           if (fpHit) {
             hit = { en: fpHit.en, tr: fpHit.tr };
             stats.cacheHits++; stats.fpHits = (stats.fpHits || 0) + 1;
