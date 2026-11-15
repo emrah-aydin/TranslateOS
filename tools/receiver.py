@@ -19,6 +19,15 @@ class H(http.server.BaseHTTPRequestHandler):
             except Exception: line=time.strftime('%H:%M:%S')+" "+body.decode(errors="replace")
         open(os.path.join(D,"log.txt"),"a").write(line+"\n"); print(line,flush=True)
         self.send_response(200); self.send_header("Access-Control-Allow-Origin","*"); self.end_headers()
+    def do_GET(self):
+        # Geliştirme: local/webtest/ klasörünü yayınla (tarayıcı denemeleri için)
+        u=urllib.parse.urlparse(self.path); rel=u.path.lstrip('/') or 'index.html'
+        if rel.startswith('web'): rel=rel[3:].lstrip('/') or 'index.html'
+        base=os.path.join(os.path.dirname(D),'webtest'); p=os.path.normpath(os.path.join(base,rel))
+        if not p.startswith(base) or not os.path.isfile(p): self.send_response(404); self.end_headers(); return
+        data=open(p,'rb').read(); self.send_response(200)
+        self.send_header('Content-Type','text/html; charset=utf-8' if p.endswith('.html') else 'application/octet-stream')
+        self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
     def do_OPTIONS(self):
         self.send_response(200); self.send_header("Access-Control-Allow-Origin","*"); self.send_header("Access-Control-Allow-Headers","Content-Type"); self.end_headers()
     def log_message(self,*a): pass

@@ -124,3 +124,17 @@ Henüz ölçülmedi: HDMI uygulamanın içindeyken tuş gecikmesi, 120 Hz / VRR 
   - Servis nabız günlüğü tutuyor; yakalama 6 sn'de, çeviri 8 sn'de zaman aşımına düşüyor.
   - Uygulama servis düşerse yeniden abone oluyor.
   - Çıkışta TV'nin HDMI uygulamasını açıkça başlatıyor.
+
+## Test: TV tarayıcısıyla, Developer Mode olmadan (2026-11-15)
+
+LG'nin kendi tarayıcısında (Chrome 132 tabanlı) bir web sayfası açıldı:
+
+| Deneme | Sonuç |
+|---|---|
+| `<video><source type="service/webos-external" src="ext://hdmi:1">` | ✅ Oyun görüntüsü sayfanın içinde oynuyor |
+| Görüntünün üstüne HTML yazı | ✅ Çalışıyor |
+| `wss://<TV IP>:3001` (ekran görüntüsü için eşleşme) | ❌ Bağlantı kurulamıyor (1006). TV'nin sertifikası tarayıcıda bir kez kabul edilse de değişmiyor. TV tarafı kaynağa (Origin) göre reddetmiyor; Mac'ten aynı Origin'lerle bağlantı kuruluyor. |
+| `ws://127.0.0.1:3000` | Açılıyor ama kayıt `1008` ile reddediliyor (Developer Mode uygulamasındakiyle aynı) |
+| `ws://<TV IP>:3000` | Kapalı |
+
+Sonuç: Tarayıcı yolu altyazıyı gösterebiliyor, ama ekran görüntüsü alamıyor. Rakipler (Console Translator, Game Caption) bu yüzden görüntüyü telefondan Remote Play ile alıyor. Sadece TV'de çalışan sürüm için kurulu bir uygulama (Developer Mode ya da LG Content Store) gerekiyor.
