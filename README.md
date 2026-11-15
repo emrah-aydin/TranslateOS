@@ -40,8 +40,9 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - 🧠 **Yapay zekâ ile okuma ve çeviri.** Altyazı bölgesi Google Gemini'ye gider; model tek istekte hem okur hem çevirir.
 - 🔥 **Sansürsüz, doğal çeviri.** Sokak ağzı, argo ve küfür yumuşatılmadan, oyundaki sertliğiyle Türkçeye aktarılır. Çeviri yalnızca Türkçedir.
 - ⚡ **Hızlı.** Altyazı göründükten yaklaşık 1–2 saniye sonra Türkçesi gelir. Aynı cümle ikinci kez çevrilmez, hafızadan gelir.
-- 🕶️ **Sadece Türkçe görünür.** Türkçe altyazı İngilizcenin yerine oturur. Yeni cümle geldiğinde kutu bir an hafifçe açılıp yeni İngilizceyi okur.
-- 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe altyazılar biraz geriden ama sırayla, hiçbiri atlanmadan gelir.
+- 🕶️ **Okunaklı çeviri ekranı.** Türkçe, İngilizcenin hemen üstünde sabit bir kutuda durur; harfler karışmaz. Hızlı konuşmada 3 cümleye kadar alt alta yığılır: en yenisi parlak, öncekiler soluk.
+- 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe biraz geriden ama sırayla gelir; hiçbir cümle silinmez. Tek kelimelik ünlemler ve alttaki görev yazıları da çevrilir.
+- 🔑 **Anahtar gerekmez.** Çeviri TranslateOS sunucusu üzerinden yapılır; isteyen Mavi tuşla kendi ücretsiz Gemini anahtarını girip günlük sınırsız kullanabilir.
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
 - 🌍 **Ortak hafıza.** Bir oyuncunun çevirdiği cümle herkese anında ve ücretsiz gelir; oyuncu arttıkça çeviri hızlanır, Gemini kullanımı azalır. Sunucuya resim gitmez, sadece İngilizce cümle ve Türkçesi; isim, e-posta ya da IP saklanmaz.
@@ -71,7 +72,7 @@ PS5 ──HDMI──► LG TV ──► TranslateOS uygulaması (oyun görüntü
                          └─► Arka plan servisi: ekran görüntüsü (saniyede ~2–3 kare)
                                → altyazı bölgesi değişti mi?
                                → Gemini: oku + Türkçeye çevir
-                               → altyazıyı İngilizcenin üstüne yaz
+                               → Türkçeyi İngilizcenin hemen üstüne yaz
 ```
 
 Teknik ayrıntılar, ölçümler ve araştırma notları: [docs/ARASTIRMA.md](docs/ARASTIRMA.md)
@@ -96,9 +97,7 @@ Kısaca:
    - **Mac:** Terminal'e yapıştır: `curl -fsSL https://raw.githubusercontent.com/emrah-aydin/TranslateOS/main/install.sh | sh`
    - **Windows:** [son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS-Kurulum.exe` dosyasını indir ve aç.
 3. Programı aç. TV'ni kendisi bulur; TV'deki 6 haneli kodu yaz, **Kur**'a bas. TranslateOS TV'de açılır.
-4. Ekrandaki **QR kodu telefonunla okut**, ücretsiz Gemini anahtarını yapıştır. İlk açılıştaki izni onayla, PS5'te oyunu aç.
-
-<p align="center"><img src="docs/screenshots/translateos-kurulum-qr.jpg" width="70%" alt="TranslateOS kurulum ekranı: QR ile Gemini anahtarı girişi"></p>
+4. İlk açılıştaki izni onayla, PS5'te oyunu aç. Hepsi bu; anahtar ya da hesap gerekmez.
 
 ### Geliştiriciler için
 
@@ -117,7 +116,7 @@ Geliştirme sırasında anahtar ve test ayarları `service/config.local.json` do
 
 - [x] Windows ve Mac için tek tıklık kurulum programı
 - [x] Developer Mode süresini kendiliğinden uzatma
-- [x] API anahtarını TV'de QR kodla girme
+- [x] İsteğe bağlı: kendi Gemini anahtarını TV'de QR kodla girme
 - [x] Ortak çeviri hafızası: bir kişinin çevirdiği cümle herkese anında ve ücretsiz gelsin
 - [x] Anahtarsız mod: Gemini anahtarı almadan, günlük sınırla kullanım
 - [ ] Sol üstteki görev ve ipucu yazılarının çevirisi (tuş simgeleriyle)

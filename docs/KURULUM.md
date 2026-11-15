@@ -6,7 +6,7 @@ LG webOS TV'ye TranslateOS'u kurmak yaklaşık **10 dakika** sürer. Bir kez yap
 - LG webOS akıllı TV (test edilen: LG 55QNED7EB3C, webOS 26). Diğer modeller için [uyumluluk listesine](../README.md#desteklenen-tvler) bak.
 - PS5 (ya da altyazılı oyun gösteren herhangi bir cihaz), TV'ye HDMI ile bağlı.
 - Bilgisayar (Windows ya da Mac). Sadece kurulum için, bir kez; sonra gerekmez.
-- Telefon. Sadece Gemini anahtarını girmek için.
+- Telefon gerekmez (sadece isteğe bağlı kendi Gemini anahtarını girmek için).
 - TV, bilgisayar ve telefon **aynı Wi-Fi** ağında olmalı.
 
 ---
@@ -51,16 +51,17 @@ Komut kurulum programını indirip kendisi açar; Mac "doğrulanamadı" uyarıs�
 
 > Program TranslateOS'un en son sürümünü GitHub'dan indirip kurar. Güncellemek için programı yeniden çalıştırman yeterli; çeviri hafızan ve anahtarın silinmez.
 
-## 5. Gemini anahtarını telefonla gir
+## 5. (İsteğe bağlı) Kendi Gemini anahtarın
 
-1. TranslateOS açılınca ekranda bir QR kod çıkar.
+TranslateOS kurulur kurulmaz anahtarsız çalışır; çeviri TranslateOS sunucusu üzerinden yapılır ve günlük bir sınırı vardır. Sınırsız kullanmak istersen kendi ücretsiz Gemini anahtarını girebilirsin:
+
+1. Kumandada **Mavi** tuşa bas, ekranda bir QR kod çıkar.
 
    ![TranslateOS kurulum ekranı](screenshots/translateos-kurulum-qr.jpg)
 
 2. QR kodu telefonunun kamerasıyla okut.
 3. Açılan sayfadaki bağlantıdan [aistudio.google.com/apikey](https://aistudio.google.com/apikey) adresine git, Google hesabınla giriş yap, **Create API key** ile ücretsiz anahtarını al ve kopyala.
-4. Kurulum sayfasına geri dön, anahtarı yapıştır ve **TV'ye kaydet**'e bas.
-5. TV'de "Anahtar kaydedildi" yazar. Anahtar sadece TV'nde saklanır.
+4. Kurulum sayfasına geri dön, anahtarı yapıştır ve **TV'ye kaydet**'e bas. Anahtar sadece TV'nde saklanır.
 
 ## 6. İlk açılışta izin
 
@@ -75,7 +76,7 @@ Bitti. PS5'te altyazılı bir oyun aç; İngilizce altyazılar Türkçe olarak o
 | Tuş | Ne yapar |
 |---|---|
 | OK ya da 🟢 Yeşil | Menü |
-| 🔵 Mavi | Gemini anahtarını değiştir (QR ekranı) |
+| 🔵 Mavi | Kendi Gemini anahtarını gir (isteğe bağlı, QR ekranı) |
 | 1–4 | HDMI girişini değiştir (cihaz bağlı giriş kendiliğinden seçilir) |
 | Geri | TranslateOS'u kapat, normal TV'ye dön |
 
