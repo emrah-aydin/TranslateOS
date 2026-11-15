@@ -14,7 +14,12 @@ process.on('unhandledRejection', function (e) { try { log('YAKALANMAYAN: ' + (e 
 var lastBeat = 0, loopStage = 'başlamadı';
 var REGISTRATION = require('./registration.json');
 var CONFIG = {};
-try { CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.json'), 'utf8')); } catch (e) {}
+try { CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.json'), 'utf8')); } catch (e) {}   // sadece geliştirme
+// Kullanıcı ayarları (Gemini anahtarı vb.) TV'de saklanır; paketin içinde anahtar YOKTUR.
+var SETTINGS_FILE = path.join(__dirname, 'settings.json'), SETTINGS = {};
+try { SETTINGS = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch (e) {}
+if (SETTINGS.geminiKey) CONFIG.geminiKey = SETTINGS.geminiKey;
+function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(SETTINGS)); return true; } catch (e) { return false; } }
 var MODEL = CONFIG.model || 'gemini-flash-lite-latest';  // TV'den ölçüm: 0,7–1,0 sn (kalıcı bağlantıyla)
 var KEY_FILE = '/tmp/translateos_app_client_key';
 var placement = CONFIG.placement || 'above';   // 'above': Türkçe İngilizcenin üstünde · 'cover': İngilizcenin yerine
@@ -711,7 +716,7 @@ var reqSeq = 0, inFlight = 0, lastTiming = '', retried = {}, underBoxReq = {}, l
 var shade = null, rebase = false, peekAckAt = 0;   // ekrandaki Türkçe kutunun yeri (kare oranı) — uygulama bildirir
 
 // Yakalama: iki istek üst üste (TV her biri için ~340 ms harcıyor); en son kare işlenir.
-var latest = null, frameSignal = null;
+var latest = null, frameSignal = null, capFails = 0;
 function waitFrame() { return new Promise(function (r) { frameSignal = r; }); }
 async function captureWorker(delay) {
   await sleep(delay);
@@ -721,7 +726,12 @@ async function captureWorker(delay) {
       var buf = await withTimeout(captureFrame(), 6000, 'yakalama'); stats.frames++;
       latest = { buf: buf, capMs: Date.now() - t, startedAt: t };
       if (frameSignal) { var f = frameSignal; frameSignal = null; f(); }
-    } catch (e) { stats.errors++; log('yakalama hatası: ' + (e && e.message)); await sleep(1000); }
+      capFails = 0;
+    } catch (e) {
+      stats.errors++; capFails++; log('yakalama hatası: ' + (e && e.message));
+      if (capFails === 6) { emit({ status: 'captureFailed' }); event({ tur: 'uyumsuz', sebep: String(e && e.message).slice(0, 120) }); }
+      await sleep(1000);
+    }
   }
 }
 
@@ -920,13 +930,69 @@ async function loop() {
   }
 }
 
+// --- Kurulum sayfası: telefon QR kodu okutup bu sayfadan Gemini anahtarını girer ---
+var SETUP_PORT = 8891, setupCode = String(Math.floor(100000 + Math.random() * 900000)), setupServer = null;
+var SETUP_HTML = function (msg) { return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+  '<title>TranslateOS kurulum</title><style>body{font-family:-apple-system,sans-serif;background:#0b1220;color:#e9f2fb;margin:0;padding:24px;max-width:520px}' +
+  'h1{font-size:26px}h1 b{color:#5ec8ff}p,li{color:#a9bccf;line-height:1.5}input{width:100%;box-sizing:border-box;font-size:17px;padding:14px;border-radius:10px;border:1px solid #2b3d55;background:#111a2b;color:#fff}' +
+  'button{margin-top:14px;width:100%;font-size:18px;padding:14px;border:0;border-radius:10px;background:#5ec8ff;color:#06121f;font-weight:700}' +
+  '.ok{background:#12351f;color:#7ef0a8;padding:12px;border-radius:10px}.err{background:#3a1515;color:#ff9a9a;padding:12px;border-radius:10px}a{color:#5ec8ff}</style></head><body>' +
+  '<h1>Translate<b>OS</b> kurulum</h1>' + (msg || '') +
+  '<ol><li><a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> adresinde Google hesabınla giriş yap.</li>' +
+  '<li><b>Create API key</b> ile ücretsiz anahtar oluştur ve kopyala.</li><li>Aşağıya yapıştır ve kaydet.</li></ol>' +
+  '<form method="POST" action="/key"><input type="hidden" name="code" value="' + setupCode + '"><input name="key" placeholder="Gemini API anahtarı" autocomplete="off" autocapitalize="off" spellcheck="false" required>' +
+  '<button>TV\'ye kaydet</button></form><p style="font-size:13px">Anahtar sadece bu TV\'de saklanır.</p></body></html>'; };
+function startSetupServer() {
+  if (setupServer) return;
+  setupServer = require('http').createServer(function (req, res) {
+    var url = require('url').parse(req.url, true);
+    function send(code, html) { res.writeHead(code, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(html); }
+    if (req.method === 'GET' && url.pathname === '/') {
+      if (url.query.c !== setupCode) return send(403, SETUP_HTML('<p class="err">Kod geçersiz. TV ekranındaki QR kodu tekrar okut.</p>'));
+      return send(200, SETUP_HTML(''));
+    }
+    if (req.method === 'POST' && url.pathname === '/key') {
+      var body = '';
+      req.on('data', function (c) { body += c; if (body.length > 4000) req.destroy(); });
+      req.on('end', function () {
+        var q = require('querystring').parse(body), key = String(q.key || '').trim();
+        if (q.code !== setupCode) return send(403, SETUP_HTML('<p class="err">Kod geçersiz.</p>'));
+        if (key.length < 20) return send(400, SETUP_HTML('<p class="err">Anahtar çok kısa görünüyor.</p>'));
+        // Anahtarı denemeden kaydetme: küçük bir istek at
+        var t = https.request({ host: 'generativelanguage.googleapis.com', path: '/v1beta/models/' + MODEL, method: 'GET', headers: { 'x-goog-api-key': key } }, function (r) {
+          r.resume();
+          if (r.statusCode === 200) {
+            SETTINGS.geminiKey = key; CONFIG.geminiKey = key; saveSettings();
+            log('Gemini anahtarı telefondan kaydedildi'); emit({ status: 'keySaved' });
+            send(200, SETUP_HTML('<p class="ok">Anahtar kaydedildi. TV\'ye dönebilirsin, çeviri başladı.</p>'));
+          } else send(400, SETUP_HTML('<p class="err">Anahtar çalışmadı (hata ' + r.statusCode + '). Doğru kopyaladığından emin ol.</p>'));
+        });
+        t.on('error', function () { send(500, SETUP_HTML('<p class="err">TV internete bağlanamadı.</p>')); });
+        t.end();
+      });
+      return;
+    }
+    send(404, 'yok');
+  });
+  setupServer.on('error', function (e) { log('kurulum sunucusu açılamadı: ' + e.message); setupServer = null; });
+  setupServer.listen(SETUP_PORT, '0.0.0.0');
+}
+service.register('setupInfo', function (m) {
+  startSetupServer();
+  lunaCall('luna://com.palm.connectionmanager/getStatus', {}).then(function (net) {
+    var ip = (net && net.wired && net.wired.ipAddress) || (net && net.wifi && net.wifi.ipAddress) || '';
+    m.respond({ returnValue: true, url: ip ? 'http://' + ip + ':' + SETUP_PORT + '/?c=' + setupCode : '', hasKey: !!CONFIG.geminiKey, code: setupCode });
+  });
+});
+service.register('forgetKey', function (m) { delete SETTINGS.geminiKey; delete CONFIG.geminiKey; saveSettings(); emit({ status: 'nokey' }); m.respond({ returnValue: true }); });
+
 var keepAlive = null;
 service.register('start', function (message) {
   if (message.isSubscription) subscribers.push(message);
   log('hafıza: ' + Object.keys(cacheByEn).length + ' cümle, ' + fpStore.length + ' parmak izi (' + (MEMORY_FILE || 'yazılamıyor') + ')');
   log('start çağrıldı (abone: ' + subscribers.length + ', anahtar: ' + (CONFIG.geminiKey ? 'var' : 'YOK') + ', node ' + process.version + ')');
   if (!keepAlive) service.activityManager.create('translateos-keepalive', function (a) { keepAlive = a; });
-  message.respond({ returnValue: true, status: 'started', model: MODEL });
+  message.respond({ returnValue: true, status: 'started', model: MODEL, hasKey: !!CONFIG.geminiKey });
   loop().catch(function (e) { log('döngü durdu: ' + e.message); running = false; });
 }, function (message) {
   // abonelik iptal: kimse dinlemiyorsa durdur

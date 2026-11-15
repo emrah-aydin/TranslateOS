@@ -42,7 +42,7 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe altyazılar biraz geriden ama sırayla, hiçbiri atlanmadan gelir.
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
-- 📺 **Kumanda ile kontrol.** Kırmızı: altyazı aç/kapat · Sarı: Türkçe İngilizcenin üstünde / yerine · Yeşil: menü · Geri: çıkış.
+- 📺 **Kumanda ile kontrol.** Kırmızı: altyazı aç/kapat · Sarı: Türkçe İngilizcenin üstünde / yerine · Yeşil: menü · Mavi: anahtarı değiştir · Geri: çıkış.
 - 😴 **TV uyumaz.** Oyun sırasında ekran koruyucu ve uyku modu devreye girmez.
 
 ## TV menüsü
@@ -80,29 +80,32 @@ Teknik ayrıntılar, ölçümler ve araştırma notları: [docs/ARASTIRMA.md](do
 
 Senin TV'n listede yoksa dene ve sonucu [issue olarak bildir](../../issues). Liste senin bildirimlerinle büyüyecek.
 
-## Kurulum (geliştirici sürümü)
+## Kurulum
 
-> Şu an kurulum geliştirici modu gerektiriyor. Herkesin tek tuşla kurabileceği kolay kurulum yol haritasında.
+📖 **Adım adım, resimli rehber: [docs/KURULUM.md](docs/KURULUM.md)** (~15 dakika, bir kez)
 
-1. TV'de **LG Content Store**'dan **Developer Mode** uygulamasını kur, LG geliştirici hesabınla giriş yap, Dev Mode'u ve Key Server'ı aç.
-2. Bilgisayarda:
-   ```bash
-   npm run setup
-   ```
-3. Ücretsiz bir **Gemini API anahtarı** al: [aistudio.google.com/apikey](https://aistudio.google.com/apikey). `service/config.local.json` dosyasına yaz:
-   ```json
-   { "geminiKey": "ANAHTARIN" }
-   ```
-4. TV'yi tanıt (`ares-setup-device`, cihaz adı `tv`) ve kur:
-   ```bash
-   npm run package && npm run install-tv && npm run launch-tv
-   ```
-5. İlk açılışta TV'de çıkan izin sorusunu onayla. Bu kadar.
+Kısaca:
+1. TV'de **Developer Mode**'u aç (ücretsiz LG geliştirici hesabıyla).
+2. [Son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `.ipk` dosyasını indir, ücretsiz [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop/releases) ile TV'ye kur.
+3. TranslateOS'u aç, ekrandaki **QR kodu telefonunla okut** ve ücretsiz Gemini anahtarını yapıştır.
+4. İlk açılıştaki izni onayla. PS5'te oyunu aç, Türkçe altyazı gelsin.
+
+<p align="center"><img src="docs/screenshots/translateos-kurulum-qr.jpg" width="70%" alt="TranslateOS kurulum ekranı: QR ile Gemini anahtarı girişi"></p>
+
+### Geliştiriciler için
+
+```bash
+npm run setup                                   # ares-cli ve servis bağımlılıkları
+sh tools/build-release.sh                       # anahtarsız yayın paketi → dist/release/
+npx ares-install -d tv dist/release/*.ipk       # TV'ye kur (cihaz adı: tv)
+```
+
+Geliştirme sırasında anahtar ve test ayarları `service/config.local.json` dosyasına yazılabilir (git dışı, yayın paketine girmez).
 
 ## Yol haritası
 
 - [ ] Tek tuşla kurulum (Homebrew Channel) ve resimli Türkçe kurulum rehberi
-- [ ] API anahtarını TV'de QR kodla girme
+- [x] API anahtarını TV'de QR kodla girme
 - [ ] Ortak çeviri hafızası: bir kişinin çevirdiği cümle herkese anında ve ücretsiz gelsin
 - [ ] Gecikmeyi 1 saniyenin altına indirmek
 - [ ] Daha fazla TV modeli ve oyun testi

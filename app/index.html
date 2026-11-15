@@ -51,6 +51,20 @@
   #menu .credit .name { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: .5px; }
   #menu .credit .ig { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 18px; color: #ff9ad5; }
   #menu .credit .ig svg { width: 20px; height: 20px; }
+  /* Kurulum ekranı: anahtar yoksa QR ile telefondan girilir */
+  #setup {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none;
+    width: 1120px; padding: 48px 56px; border-radius: 28px; color: #e9f2fb; box-sizing: border-box;
+    background: rgba(8,14,24,.95); border: 1px solid rgba(94,200,255,.35); box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  }
+  #setup .row2 { display: flex; gap: 48px; align-items: center; }
+  #setup h1 { margin: 0 0 8px; font-size: 52px; } #setup h1 b { color: #5ec8ff; }
+  #setup .lead { font-size: 26px; color: #a9bccf; margin: 0 0 28px; }
+  #setup ol { margin: 0; padding-left: 30px; font-size: 26px; line-height: 1.7; color: #dbe7f3; }
+  #setup .qr { background: #fff; padding: 18px; border-radius: 18px; flex: none; }
+  #setup .qr svg { display: block; width: 340px; height: 340px; }
+  #setup .url { margin-top: 20px; font: 20px monospace; color: #7f93a8; }
+  #setup .foot { margin-top: 18px; font-size: 20px; color: #7f93a8; }
 </style>
 </head>
 <body>
@@ -63,6 +77,23 @@
   <div class="by">by Emrah AYDIN</div>
 </div>
 
+<div id="setup">
+  <h1>Translate<b>OS</b></h1>
+  <p class="lead">Çeviriyi başlatmak için ücretsiz bir Gemini anahtarı gerekiyor.</p>
+  <div class="row2">
+    <div class="qr" id="setup-qr"></div>
+    <div>
+      <ol>
+        <li>Telefonunla bu QR kodu okut.</li>
+        <li>Açılan sayfadaki bağlantıdan ücretsiz anahtarını al.</li>
+        <li>Anahtarı yapıştırıp <b>TV'ye kaydet</b>'e bas.</li>
+      </ol>
+      <div class="url" id="setup-url"></div>
+      <div class="foot">Telefon ve TV aynı Wi-Fi ağında olmalı. · Geri: kapat</div>
+    </div>
+  </div>
+</div>
+
 <div id="menu">
   <h1>Translate<b>OS</b></h1>
   <div class="row"><span>Altyazı</span><span id="m-sub">Açık</span></div>
@@ -73,6 +104,7 @@
     <div><span class="dot" style="background:#e5484d"></span>Altyazıyı aç / kapat</div>
     <div><span class="dot" style="background:#f5c542"></span>Türkçe üstte / yerine</div>
     <div><span class="dot" style="background:#46a758"></span>Bu menü</div>
+    <div><span class="dot" style="background:#3e8bff"></span>Gemini anahtarını değiştir</div>
   </div>
   <div class="credit">
     <div class="name">Emrah AYDIN</div>
@@ -83,6 +115,7 @@
   </div>
 </div>
 
+<script src="lib/qrcode.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

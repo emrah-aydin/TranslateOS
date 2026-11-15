@@ -2,7 +2,7 @@
 // Oyun sırasında bu ekrandan çıkılmaz (TV'nin kendi HDMI ekranına geçiş kararmaya yol açıyor).
 (function () {
   var W = 1920, H = 1080;
-  var KEY = { BACK: 461, RED: 403, GREEN: 404, YELLOW: 405, OK: 13 };
+  var KEY = { BACK: 461, RED: 403, GREEN: 404, YELLOW: 405, BLUE: 406, OK: 13 };
   var SVC = 'luna://com.translateos.app.service/';
   var subEl = document.getElementById('sub');
   var statusEl = document.getElementById('status');
@@ -160,6 +160,22 @@
   setTimeout(function () { badgeEl.style.opacity = '0'; }, 6000);
   status('Menü için yeşil tuş', 4000);
 
+  // --- Kurulum ekranı (QR) ---
+  var setupEl = document.getElementById('setup');
+  function showSetup() {
+    luna('setup', SVC + 'setupInfo', {}, function (r) {
+      if (!r.url) { status('TV ağ adresi bulunamadı', 5000); return; }
+      try {
+        var qr = qrcode(0, 'M'); qr.addData(r.url); qr.make();
+        document.getElementById('setup-qr').innerHTML = qr.createSvgTag({ cellSize: 6, margin: 0, scalable: true });
+      } catch (e) { document.getElementById('setup-qr').textContent = ''; }
+      document.getElementById('setup-url').textContent = r.url;
+      setupEl.style.display = 'block';
+      toggleMenu(false);
+    });
+  }
+  function hideSetup() { setupEl.style.display = 'none'; }
+
   // Servise abone ol; servis düşer ya da abonelik koparsa kendiliğinden yeniden bağlan.
   var resubTimer = null;
   function subscribe() {
@@ -172,7 +188,9 @@
       }
       if (r.status === 'pairing') status('TV\'de çıkan izni onaylayın', 0);
       if (r.status === 'ready') status('Altyazı çevirisi hazır', 3000);
-      if (r.status === 'nokey') status('Gemini anahtarı yok', 0);
+      if (r.status === 'nokey' || (r.status === 'started' && r.hasKey === false)) showSetup();
+      if (r.status === 'keySaved') { hideSetup(); status('Anahtar kaydedildi, çeviri başladı', 4000); }
+      if (r.status === 'captureFailed') status('Bu TV ekran görüntüsü vermiyor; çeviri yapılamıyor. Lütfen GitHub\'da bildir.', 0);
       if (r.clear) hideSub();
       if (r.pending) pendingSub(r.bbox, r.peek);
       else if (r.peek && subEl.style.display !== 'none') { setAlpha(ALPHA_PEEK); reportRect(true); }   // eski Türkçe kalır, kutu bir an açılır
@@ -208,11 +226,15 @@
       status(placement === 'above' ? 'Türkçe: İngilizcenin üstünde' : 'Türkçe: İngilizcenin yerine', 2500);
       if (menuEl.style.display === 'block') refreshMenu();
       e.preventDefault();
+    } else if (e.keyCode === KEY.BLUE) {
+      if (setupEl.style.display === 'block') hideSetup(); else showSetup();
+      e.preventDefault();
     } else if (e.keyCode === KEY.GREEN || e.keyCode === KEY.OK) {
       toggleMenu();
       e.preventDefault();
     } else if (e.keyCode === KEY.BACK) {
       e.preventDefault();
+      if (setupEl.style.display === 'block') { hideSetup(); return; }
       if (menuEl.style.display === 'block') { toggleMenu(false); return; }
       // Çıkış: TV'nin HDMI uygulamasını açıkça başlat (kendiliğinden dönüş siyah ekranda takılıyor).
       luna('stop', SVC + 'stop', {});
