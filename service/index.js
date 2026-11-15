@@ -878,7 +878,20 @@ function memLookup(k) { return (k && (cacheByEn[k] || sharedByEn[k])) || null; }
 // sadece İngilizce cümle ve Türkçesi. Kapatmak için settings.json: { "share": false }
 var SHARED_URL = CONFIG.sharedServer || 'https://translateos.translate-os.workers.dev';
 var sharedByEn = {}, sharedSince = 0, sharedQueue = [], sharedBusy = false, sharedLastSync = 0;
-var sharedFps = [], sharedFpKeys = {}, sharedFpRaw = [];   // ortak şekil hafızası: [{ w, h, bits, en }]
+var sharedFps = [], sharedFpKeys = {}, sharedFpRaw = [];
+var sharedSeeded = false;
+// Bir kerelik: bu TV'de biriken şekilleri (cümlesi bilinen, uzun satır) ortak havuza gönder; 30 sn'de bir 50'şer gider
+function seedSharedFps() {
+  if (!sharedOn()) return;
+  var n = 0;
+  for (var i = fpStore.length - 1; i >= 0 && sharedQueue.length < 480; i--) {
+    var e = fpStore[i], k = normEn(e.en), tr = cacheByEn[k] || sharedByEn[k];
+    if (!tr || sharedFpKeys[k] || e.w < 0.3 * 960) continue;
+    sharedFpKeys[k] = 1;   // tekrar kuyruğa girmesin
+    sharedQueue.push({ en: e.en, tr: tr, fp: { w: e.w, h: e.h, b: packBits(e.bits) } }); n++;
+  }
+  if (n) log('Ortak şekil hafızasına gönderilmek üzere ' + n + ' şekil sıraya alındı');
+}   // ortak şekil hafızası: [{ w, h, bits, en }]
 function addSharedFps(list) {
   var n = 0, seen = {};
   sharedFpRaw.forEach(function (r) { seen[r[0] + '|' + r[1] + '|' + r[2]] = 1; });
@@ -925,6 +938,7 @@ async function sharedSync() {
       var n = 0; Object.keys(r.json.lines).forEach(function (k) { if (sharedByEn[k] !== r.json.lines[k]) n++; sharedByEn[k] = r.json.lines[k]; });
       sharedSince = r.json.now || Date.now(); sharedLastSync = Date.now();
       var nf = addSharedFps(r.json.fps);
+      if (!sharedSeeded) { sharedSeeded = true; setTimeout(seedSharedFps, 5000); }
       if (n || nf) writeFileSafe(SHARED_FILE, JSON.stringify({ since: sharedSince, lines: sharedByEn, fps: sharedFpRaw }), function () {});
       log('Ortak hafıza: ' + Object.keys(sharedByEn).length + ' cümle (' + n + ' yeni), ' + sharedFps.length + ' şekil (' + nf + ' yeni)');
       if (full) setTimeout(function () { sharedSync().catch(function () {}); }, 3000);   // tam paket birkaç dk eski olabilir: hemen yenileri de al
