@@ -53,10 +53,8 @@
   #menu .back { flex: none; width: 32px; font-size: 13px; font-weight: 700; color: #cfe0f0; border: 1px solid rgba(255,255,255,.3); border-radius: 5px; text-align: center; line-height: 20px; }
   #menu .note { margin-top: 12px; font-size: 16px; line-height: 1.45; color: #8ea2b6; }
   #menu .note b { color: #dbe7f3; }
-  #menu .credit { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.08); }
-  #menu .credit .name { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: .5px; }
-  #menu .credit .ig { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 18px; color: #ff9ad5; }
-  #menu .credit .ig svg { width: 20px; height: 20px; }
+  #menu .credit { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.08); font-size: 17px; color: #ff9ad5; }
+  #menu .credit svg { width: 19px; height: 19px; }
   /* Kurulum ekranı: anahtar yoksa QR ile telefondan girilir */
   #setup {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none;
@@ -105,7 +103,6 @@
 <div id="menu">
   <h1><img class="mark" src="img/logo-96.png" alt=""><span>Translate<b>OS</b></span></h1>
   <div class="row"><span>Türkçe</span><span id="m-place">İngilizcenin yerine</span></div>
-  <div class="row"><span>Çevrilen cümle</span><span id="m-calls">0</span></div>
   <div class="row"><span>Hafızadaki cümle</span><span id="m-mem">0</span></div>
   <div class="keys">
     <div class="k"><span class="dot" style="background:#e5484d"></span><span>Türkçeyi gizle / göster</span></div>
@@ -114,13 +111,10 @@
     <div class="k"><span class="dot" style="background:#3e8bff"></span><span>Gemini anahtarını değiştir</span></div>
     <div class="k"><span class="back">Geri</span><span>TranslateOS'u kapat, normal TV'ye dön</span></div>
   </div>
-  <div class="note">Kaldırmak için: ana ekranda TranslateOS'un üstüne gel, <b>OK</b>'a basılı tut, <b>Kaldır</b>'ı seç.</div>
+  <div class="note">Kaldırmak için: ana ekranda TranslateOS'a gel, <b>OK</b>'a basılı tut › <b>Kaldır</b></div>
   <div class="credit">
-    <div class="name">Emrah AYDIN</div>
-    <div class="ig">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#ff9ad5" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#ff9ad5" stroke="none"/></svg>
-      <span>Instagram · @emrahaydin.es</span>
-    </div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="#ff9ad5" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#ff9ad5" stroke="none"/></svg>
+    <span>@emrahaydin.es</span>
   </div>
 </div>
 

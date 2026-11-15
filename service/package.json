@@ -1,6 +1,6 @@
 {
   "name": "com.translateos.app.service",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": "index.js",
   "dependencies": {
     "@jsquash/jpeg": "^1.6.0",

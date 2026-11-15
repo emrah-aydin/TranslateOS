@@ -131,7 +131,6 @@
   // --- Menü ---
   function refreshMenu() {
     luna('stats', SVC + 'stats', {}, function (r) {
-      document.getElementById('m-calls').textContent = r.calls || 0;
       document.getElementById('m-mem').textContent = r.memory || 0;
       if (r.placement) placement = r.placement;
       document.getElementById('m-place').textContent = placement === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine';
