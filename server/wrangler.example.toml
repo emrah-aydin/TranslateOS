@@ -1,0 +1,14 @@
+# Kopyala: cp wrangler.example.toml wrangler.toml  — sonra database_id'yi kendi D1 veritabanınla değiştir.
+name = "translateos"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "translateos"
+database_id = "BURAYA_D1_VERITABANI_KIMLIGI"
+
+# Gizli değerler (repoya girmez):
+#   npx wrangler secret put SECRET      # TV kimliklerini imzalamak için rastgele uzun bir değer
+#   npx wrangler secret put ADMIN_KEY   # kötüye kullananı silmek için yönetici anahtarı

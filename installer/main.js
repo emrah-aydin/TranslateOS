@@ -116,6 +116,11 @@ function looksLikeIpk(buf) { return buf && buf.length > 10000 && buf.slice(0, 8)
 
 // Önce GitHub'daki en son sürüm; olmazsa programın içindeki sürüm.
 async function getIpk() {
+  // Geliştirici: TRANSLATEOS_IPK=/yol/paket.ipk ile GitHub yerine yerel paket kurulur
+  if (process.env.TRANSLATEOS_IPK) {
+    const buf = fs.readFileSync(process.env.TRANSLATEOS_IPK);
+    if (looksLikeIpk(buf)) return { buf, version: path.basename(process.env.TRANSLATEOS_IPK) };
+  }
   try {
     const ua = { 'User-Agent': 'TranslateOS-Installer', Accept: 'application/vnd.github+json' };
     const rel = JSON.parse((await httpGetBuf(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: ua })).toString());

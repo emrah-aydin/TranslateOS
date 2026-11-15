@@ -23,3 +23,9 @@ service/settings.json
 installer/build/
 installer/.cache/
 service/*.tmp
+
+# Sunucu: hesaba özel ayar ve yerel dosyalar
+server/wrangler.toml
+server/.wrangler/
+server/.dev.vars
+service/shared.json

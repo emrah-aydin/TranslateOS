@@ -614,7 +614,7 @@ async function readAndTranslateFast(jpg, onEarly) {
       var me = txt.match(EN_DONE);
       if (me) {
         enSeen = true; var en = ''; try { en = JSON.parse('"' + me[1] + '"').trim(); } catch (e) {}
-        var mem = en && looksEnglish(en) && cacheByEn[normEn(en)];
+        var mem = en && looksEnglish(en) && memLookup(normEn(en));
         if (mem) { early = true; onEarly(mem, Date.now() - t0, 'hafıza', en); return; }   // bilinen cümle: Türkçeyi bekleme
       }
     }
@@ -732,7 +732,7 @@ function fpLookup(fp) {
     var v = fpSim(fp, e); if (v > bestV) { bestV = v; best = e; }
   }
   if (!best || bestV < FP_MATCH) return null;
-  var tr = cacheByEn[normEn(best.en)];
+  var tr = memLookup(normEn(best.en));
   return tr ? { en: best.en, tr: tr, sim: bestV } : null;
 }
 function fpRemember(fp, en) {
@@ -751,7 +751,75 @@ function remember(en, tr) {
   var k = normEn(en); if (!k || !tr) return;
   if (cacheByEn[k] === tr) return;
   cacheByEn[k] = tr; memoryDirty = true;
+  if (!sharedByEn[k]) sharedAdd(en, tr);
 }
+// Önce bu TV'nin kendi hafızası (tutarlılık), sonra herkesin ortak hafızası
+function memLookup(k) { return (k && (cacheByEn[k] || sharedByEn[k])) || null; }
+
+// --- Ortak hafıza (TranslateOS sunucusu) ---
+// TV açılışta ortak hafızayı bir kez indirir, sonra yarım saatte bir sadece yenileri alır; bilinen cümleler
+// yine TV'nin içinden anında bulunur. Yeni çeviriler 30 sn'de bir toplu gönderilir. Sunucuya resim gitmez,
+// sadece İngilizce cümle ve Türkçesi. Kapatmak için settings.json: { "share": false }
+var SHARED_URL = CONFIG.sharedServer || 'https://translateos.translate-os.workers.dev';
+var sharedByEn = {}, sharedSince = 0, sharedQueue = [], sharedBusy = false, sharedLastSync = 0;
+var SHARED_FILE = path.join(__dirname, 'shared.json');
+var sharedAgent = new https.Agent({ keepAlive: true, maxSockets: 2 });
+try { var sj = JSON.parse(fs.readFileSync(SHARED_FILE, 'utf8')); sharedByEn = sj.lines || {}; sharedSince = sj.since || 0; } catch (e) {}
+function sharedOn() { return SETTINGS.share !== false && !!SHARED_URL; }
+function sharedReq(method, p, body) {
+  return new Promise(function (resolve) {
+    var u = new URL(SHARED_URL + p), data = body ? Buffer.from(JSON.stringify(body)) : null;
+    var req = https.request({ hostname: u.hostname, path: u.pathname + u.search, method: method, agent: sharedAgent,
+      headers: Object.assign({ 'Accept-Encoding': 'gzip', 'User-Agent': 'TranslateOS-TV' }, data ? { 'Content-Type': 'application/json', 'Content-Length': data.length } : {}) },
+      function (res) {
+        var chunks = []; res.on('data', function (c) { chunks.push(c); });
+        res.on('end', function () {
+          var buf = Buffer.concat(chunks);
+          var done = function (b) { var o = null; try { o = JSON.parse(b.toString('utf8')); } catch (e) {} resolve({ status: res.statusCode, json: o }); };
+          if (res.headers['content-encoding'] === 'gzip') require('zlib').gunzip(buf, function (e, out) { done(e ? Buffer.from('') : out); }); else done(buf);
+        });
+      });
+    req.on('error', function () { resolve({ status: 0, json: null }); });
+    req.setTimeout(20000, function () { req.destroy(); });
+    if (data) req.write(data); req.end();
+  });
+}
+async function sharedRegister() {
+  if (SETTINGS.device && SETTINGS.deviceToken) return true;
+  var r = await sharedReq('POST', '/v1/register');
+  if (r.status === 200 && r.json && r.json.device) { SETTINGS.device = r.json.device; SETTINGS.deviceToken = r.json.token; saveSettings(); log('Ortak hafızaya kayıt olundu'); return true; }
+  return false;
+}
+async function sharedSync() {
+  if (!sharedOn() || sharedBusy) return; sharedBusy = true;
+  try {
+    var full = !sharedSince;
+    var r = await sharedReq('GET', '/v1/pack' + (sharedSince ? '?since=' + sharedSince : ''));
+    if (r.status === 200 && r.json && r.json.lines) {
+      var n = 0; Object.keys(r.json.lines).forEach(function (k) { if (sharedByEn[k] !== r.json.lines[k]) n++; sharedByEn[k] = r.json.lines[k]; });
+      sharedSince = r.json.now || Date.now(); sharedLastSync = Date.now();
+      if (n) writeFileSafe(SHARED_FILE, JSON.stringify({ since: sharedSince, lines: sharedByEn }), function () {});
+      log('Ortak hafıza: ' + Object.keys(sharedByEn).length + ' cümle (' + n + ' yeni)');
+      if (full) setTimeout(function () { sharedSync().catch(function () {}); }, 3000);   // tam paket birkaç dk eski olabilir: hemen yenileri de al
+    } else log('Ortak hafıza alınamadı (' + r.status + ')');
+  } finally { sharedBusy = false; }
+}
+function sharedAdd(en, tr) {
+  if (!sharedOn() || sharedQueue.length > 500) return;
+  for (var i = 0; i < sharedQueue.length; i++) if (sharedQueue[i].en === en) return;
+  sharedQueue.push({ en: en, tr: tr });
+}
+async function sharedFlush() {
+  if (!sharedOn() || !sharedQueue.length) return;
+  if (!(await sharedRegister())) return;
+  var batch = sharedQueue.splice(0, 50);
+  var r = await sharedReq('POST', '/v1/add', { device: SETTINGS.device, token: SETTINGS.deviceToken, lines: batch });
+  if (r.status === 200) { log('Ortak hafızaya gönderildi: ' + (r.json && r.json.added) + ' cümle'); return; }
+  if (r.status === 401) { delete SETTINGS.device; delete SETTINGS.deviceToken; saveSettings(); }
+  if (r.status !== 429) sharedQueue = batch.concat(sharedQueue).slice(0, 500);   // olmadıysa sonra tekrar dene
+}
+setInterval(function () { if (running) sharedFlush().catch(function () {}); }, 30000);
+setInterval(function () { if (running && Date.now() - sharedLastSync > 30 * 60000) sharedSync().catch(function () {}); }, 60000);
 setInterval(function () {
   if (!memoryDirty || !MEMORY_FILE) return;
   memoryDirty = false;
@@ -952,7 +1020,7 @@ async function loop() {
                 }
                 var k = normEn(out.en);
                 if (out.en) prevEn = out.en;
-                if (k && cacheByEn[k]) out.tr = cacheByEn[k];          // aynı cümle hep aynı çeviri
+                var known = k && memLookup(k); if (known) out.tr = known;   // aynı cümle hep aynı çeviri (kendi ya da ortak hafıza)
                 if (k) remember(out.en, out.tr);
                 if (k && !underBoxReq[seq] && !out.rejected && sig.bbox) fpRemember(sig.bbox.fp, out.en);
                 sigCache.unshift({ sig: sig, out: out }); if (sigCache.length > 300) sigCache.pop();   // boş sonuç da: aynı gürültü için tekrar sorma
@@ -993,8 +1061,8 @@ function startSetupServer() {
     var url = require('url').parse(req.url, true);
     function send(code, html) { res.writeHead(code, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(html); }
     if (req.method === 'GET' && url.pathname === '/logo.png') {
-      // Logo uygulama klasöründen okunur (servis ve uygulama aynı paketle kurulur)
-      return fs.readFile(path.join(__dirname, '..', '..', 'applications', 'com.translateos.app', 'img', 'logo-96.png'), function (e, b) {
+      // Servis TV'de kendi korumalı alanında çalışır; logo servisin kendi klasöründe durur
+      return fs.readFile(path.join(__dirname, 'logo.png'), function (e, b) {
         if (e) { res.writeHead(404); return res.end(); }
         res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' }); res.end(b);
       });
@@ -1070,6 +1138,7 @@ async function devmodeKeepAlive() {
 var keepAlive = null;
 service.register('start', function (message) {
   devmodeKeepAlive().catch(function () {});
+  if (Date.now() - sharedLastSync > 5 * 60000) sharedSync().catch(function () {});
   if (message.isSubscription) subscribers.push(message);
   log('hafıza: ' + Object.keys(cacheByEn).length + ' cümle, ' + fpStore.length + ' parmak izi (' + (MEMORY_FILE || 'yazılamıyor') + ')');
   log('start çağrıldı (abone: ' + subscribers.length + ', anahtar: ' + (CONFIG.geminiKey ? 'var' : 'YOK') + ', node ' + process.version + ')');
@@ -1098,7 +1167,7 @@ service.register('boxRect', function (m) {
   if (p.peek) peekAckAt = Date.now();
   m.respond({ returnValue: true });
 });
-service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, placement: placement, devmodeHours: devmodeHours }, stats)); });
+service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, shared: Object.keys(sharedByEn).length, placement: placement, devmodeHours: devmodeHours }, stats)); });
 service.register('showInput', function (m) {
   // Uygulamadan çıkarken TV'nin kendi HDMI ekranına güvenli dönüş.
   var id = 'com.webos.app.hdmi' + ((m.payload && m.payload.port) || 1);

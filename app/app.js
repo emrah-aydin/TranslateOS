@@ -131,7 +131,8 @@
   // --- Menü ---
   function refreshMenu() {
     luna('stats', SVC + 'stats', {}, function (r) {
-      document.getElementById('m-mem').textContent = r.memory || 0;
+      document.getElementById('m-mem').textContent = (r.memory || 0).toLocaleString('tr-TR') + ' cümle';
+      document.getElementById('m-shared').textContent = (r.shared || 0).toLocaleString('tr-TR') + ' cümle';
       if (r.placement) placement = r.placement;
       document.getElementById('m-place').textContent = placement === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine';
     });
