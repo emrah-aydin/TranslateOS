@@ -19,6 +19,7 @@ try { CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.jso
 var SETTINGS_FILE = path.join(__dirname, 'settings.json'), SETTINGS = {};
 try { SETTINGS = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch (e) {}
 if (SETTINGS.geminiKey) CONFIG.geminiKey = SETTINGS.geminiKey;
+if (SETTINGS.placement) { delete SETTINGS.placement; }   // eski sürümden kalan yerleşim seçimi artık yok
 // Dosyayı önce geçici adla yazıp yerine taşır: yarım kalmaz, eski dosyanın sahibi/izni engel olmaz.
 function writeFileSafe(file, data, cb) {
   var tmp = file + '.tmp';
@@ -30,7 +31,7 @@ function writeFileSafe(file, data, cb) {
 function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE + '.tmp', JSON.stringify(SETTINGS)); fs.renameSync(SETTINGS_FILE + '.tmp', SETTINGS_FILE); return true; } catch (e) { return false; } }
 var MODEL = CONFIG.model || 'gemini-flash-lite-latest';  // TV'den ölçüm: 0,7–1,0 sn (kalıcı bağlantıyla)
 var KEY_FILE = '/tmp/translateos_app_client_key';
-var placement = SETTINGS.placement || CONFIG.placement || 'cover';   // 'cover': Türkçe İngilizcenin yerine (varsayılan) · 'above': İngilizcenin üstünde
+var placement = 'cover';   // Türkçe her zaman İngilizcenin üzerini kapatır
 
 // Altyazı bölgesi (kare oranı). Türkçe kutumuz bunun ÜSTÜNDE durur, bu yüzden bu bölgeye girmez.
 var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.865, y1: 1.0 };
@@ -1195,7 +1196,7 @@ service.register('start', function (message) {
 service.register('stop', function (m) { running = false; m.respond({ returnValue: true }); });
 service.register('setPlacement', function (m) {
   var p = m.payload && m.payload.placement;
-  if (p === 'above' || p === 'cover') { placement = p; SETTINGS.placement = p; saveSettings(); log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
+  if (p === 'cover') { placement = p; log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
   m.respond({ returnValue: true, placement: placement });
 });
 service.register('boxRect', function (m) {

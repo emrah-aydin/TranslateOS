@@ -40,18 +40,18 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - 🧠 **Yapay zekâ ile okuma ve çeviri.** Altyazı bölgesi Google Gemini'ye gider; model tek istekte hem okur hem çevirir.
 - 🔥 **Sansürsüz, doğal çeviri.** Sokak ağzı, argo ve küfür yumuşatılmadan, oyundaki sertliğiyle Türkçeye aktarılır. Çeviri yalnızca Türkçedir.
 - ⚡ **Hızlı.** Altyazı göründükten yaklaşık 1–2 saniye sonra Türkçesi gelir. Aynı cümle ikinci kez çevrilmez, hafızadan gelir.
-- 🕶️ **Sadece Türkçe görünür.** Türkçe altyazı İngilizcenin yerine oturur. Yeni cümle geldiğinde kutu bir an hafifçe açılıp yeni İngilizceyi okur. İstersen Sarı tuşla Türkçeyi İngilizcenin üstüne alıp ikisini birlikte görebilirsin.
+- 🕶️ **Sadece Türkçe görünür.** Türkçe altyazı İngilizcenin yerine oturur. Yeni cümle geldiğinde kutu bir an hafifçe açılıp yeni İngilizceyi okur.
 - 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe altyazılar biraz geriden ama sırayla, hiçbiri atlanmadan gelir.
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
 - 🌍 **Ortak hafıza.** Bir oyuncunun çevirdiği cümle herkese anında ve ücretsiz gelir; oyuncu arttıkça çeviri hızlanır, Gemini kullanımı azalır. Sunucuya resim gitmez, sadece İngilizce cümle ve Türkçesi; isim, e-posta ya da IP saklanmaz.
-- 📺 **Kumanda ile kontrol.** Kırmızı: Türkçeyi gizle/göster · Sarı: Türkçe İngilizcenin yerine / üstünde · Yeşil: menü · Mavi: anahtarı değiştir · Geri: çıkış.
+- 📺 **Kumanda ile kontrol.** Kırmızı: Türkçeyi gizle/göster · Yeşil: menü · Mavi: anahtarı değiştir · Geri: çıkış.
 - 🔁 **Developer Mode süresi kendiliğinden uzar.**
 - 😴 **TV uyumaz.** Kumandaya dokunmasan da oyun sırasında ekran koruyucu devreye girmez; girerse ekran hemen geri açılır.
 
 ## TV menüsü
 
-Yeşil tuşla açılır, 10 saniyede kendiliğinden kapanır: Türkçenin yeri ve tuşlar.
+Yeşil tuşla açılır, 10 saniyede kendiliğinden kapanır: tuşlar ve bağlantılar.
 
 ![TranslateOS TV menüsü](docs/screenshots/translateos-menu.jpg)
 
