@@ -51,7 +51,7 @@ Komut kurulum programını indirip kendisi açar; Mac "doğrulanamadı" uyarıs�
 
 1. Programı aç (Terminal komutuyla açtıysan zaten açılmıştır). Tarayıcında bir kurulum sayfası açılır.
    - **Windows:** "Windows bilgisayarınızı korudu" uyarısı çıkarsa **Ek bilgi** › **Yine de çalıştır**'a bas.
-   - **Mac:** "yerel ağdaki aygıtları bulmak istiyor" diye sorarsa **İzin Ver**'e bas; bu izin olmadan program TV'yi göremez. Zip ile indirdiysen önce "doğrulanamadı" uyarısı çıkar: **Bitti**'ye bas, **Sistem Ayarları › Gizlilik ve Güvenlik**'e gir, en altta **Yine de Aç**'a bas.
+   - **Mac:** "yerel ağdaki aygıtları bulmak istiyor" diye sorarsa **İzin Ver**'e bas; bu izin olmadan program TV'yi göremez. Zip ile indirdiysen önce "doğrulanamadı" uyarısı çıkar: **Bitti**'ye bas, **Sistem Ayarları › Gizlilik ve Güvenlik**'e gir, en altta **Yine de Aç**'a bas. Program açıkken Dock'ta **TranslateOS** simgesi görünür; simgeye tıklarsan kurulum sayfası yeniden açılır.
 2. Sayfa ağdaki LG TV'ni kendisi bulur. Bulamazsa TV'nin IP adresini elle yaz.
 3. Developer Mode uygulamasındaki **Passphrase**'i (6 karakter) yaz, **TranslateOS'u kur**'a bas.
 4. Bir dakikadan kısa sürede kurulum biter ve TranslateOS TV'nde kendiliğinden açılır.
@@ -92,7 +92,7 @@ Bitti. PS5'te altyazılı bir oyun aç; İngilizce altyazılar Türkçe olarak o
 
 - **QR kodu okutunca sayfa açılmıyor:** Telefon ve TV aynı Wi-Fi ağında olmalı. Misafir ağı ya da mobil veri çalışmaz.
 - **"Bu TV ekran görüntüsü vermiyor" yazıyor:** TV modelin henüz desteklenmiyor olabilir. Lütfen modelini ve webOS sürümünü (Ayarlar › Genel › Cihaz › TV Bilgisi) [GitHub'da bildir](https://github.com/emrah-aydin/TranslateOS/issues).
-- **Kurulum programı TV'yi bulamıyor:** TV ile bilgisayar aynı Wi-Fi ağında mı? TV'nin IP adresini Developer Mode uygulamasından okuyup sayfaya elle yaz. Mac'te yerel ağ iznini yanlışlıkla reddettiysen: **Sistem Ayarları › Gizlilik ve Güvenlik › Yerel Ağ** bölümünde **TranslateOS Kurulum**'u aç, programı kapatıp yeniden aç.
+- **Kurulum programı TV'yi bulamıyor:** TV ile bilgisayar aynı Wi-Fi ağında mı? TV'nin IP adresini Developer Mode uygulamasından okuyup sayfaya elle yaz. Mac'te yerel ağ iznini yanlışlıkla reddettiysen: **Sistem Ayarları › Gizlilik ve Güvenlik › Yerel Ağ** bölümünde **TranslateOS**'u aç, programı kapatıp yeniden aç.
 - **"Kod yanlış" diyor:** Developer Mode uygulamasındaki Passphrase'i kontrol et. Key Server'ı kapatıp açınca kod değişebilir.
 - **Uygulama listeden kayboldu:** Developer Mode kapanmış olabilir. 2. adımı tekrarla, sonra kurulum programını yeniden çalıştır.
 - **Görüntü siyah kaldı:** Kumandadan giriş tuşuna (Input) basıp HDMI girişini yeniden seç.
@@ -104,6 +104,8 @@ Kurulum programını kullanmak istemezsen `.ipk` dosyasını [son sürümden](ht
 ## Kaldırma
 
 TV'nin ana ekranında TranslateOS'un üstüne gel, **OK** tuşuna basılı tut ve **Kaldır**'ı seç. Bu yol TV menüsünde de yazar.
+
+Bilgisayardaki kurulum programı kurulum bitince kendiliğinden kapanır. Mac'te açık kalırsa Dock'taki **TranslateOS** simgesine sağ tıklayıp **Çık**'a bas; ardından zip ile indirdiysen `TranslateOS.app`'i Çöp'e atabilirsin.
 
 ## Ortak hafıza ve gizlilik
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Kurulum programını tek dosya olarak paketler (Node.js "single executable application").
-#   Mac:     dist/installer/TranslateOS-Kurulum-Mac.zip  (Apple Silicon + Intel, tek uygulama)
+#   Mac:     dist/installer/TranslateOS-Kurulum-Mac.zip  (TranslateOS.app; Apple Silicon + Intel)
 #   Windows: dist/installer/TranslateOS-Kurulum.exe
 # Önce yayın paketi üretilmiş olmalı: sh tools/build-release.sh
 set -e
@@ -44,9 +44,14 @@ for a in arm64 x64; do
   codesign --remove-signature "$B/mac-$a"
   npx postject "$B/mac-$a" NODE_SEA_BLOB "$B/sea.blob" --sentinel-fuse $FUSE --macho-segment-name NODE_SEA >/dev/null
 done
-APP="$B/TranslateOS Kurulum.app"
-rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS"
+APP="$B/TranslateOS.app"
+rm -rf "$APP" "$B/TranslateOS Kurulum.app"; mkdir -p "$APP/Contents/MacOS"
 lipo -create "$B/mac-arm64" "$B/mac-x64" -output "$APP/Contents/MacOS/translateos-kurulum"
+# Dock'ta görünen küçük başlatıcı (Çık / yeniden aç); kurulum programını o çalıştırır
+for a in arm64 x86_64; do
+  swiftc -O -target $a-apple-macos11 mac/Launcher.swift -o "$B/launcher-$a"
+done
+lipo -create "$B/launcher-arm64" "$B/launcher-x86_64" -output "$APP/Contents/MacOS/TranslateOS"
 # Uygulama ikonu
 mkdir -p "$APP/Contents/Resources" "$B/icon.iconset"
 for sz in 16 32 128 256 512; do
@@ -58,13 +63,14 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>TranslateOS Kurulum</string>
+  <key>CFBundleName</key><string>TranslateOS</string>
+  <key>CFBundleDisplayName</key><string>TranslateOS</string>
   <key>CFBundleIdentifier</key><string>com.translateos.installer</string>
-  <key>CFBundleExecutable</key><string>translateos-kurulum</string>
+  <key>CFBundleExecutable</key><string>TranslateOS</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleIconFile</key><string>icon</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
-  <key>LSUIElement</key><true/>
+  <key>NSHighResolutionCapable</key><true/>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
 </dict></plist>
 PLIST
