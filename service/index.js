@@ -930,7 +930,7 @@ setInterval(function () {
   memoryDirty = false;
   writeFileSafe(MEMORY_FILE, JSON.stringify(cacheByEn), function (e) { if (e) { memoryDirty = true; log('hafıza yazılamadı: ' + e.message); } });
 }, 5000);
-var reqSeq = 0, inFlight = 0, lastReqAt = 0, safetyRead = false, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0, lastColorAt = 0, lastColor = null;
+var reqSeq = 0, inFlight = 0, lastReqAt = 0, safetyRead = false, freshNext = false, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0, lastColorAt = 0, lastColor = null;
 var shade = null, rebase = false, peekAckAt = 0;   // ekrandaki Türkçe kutunun yeri (kare oranı) — uygulama bildirir
 
 // Yakalama: iki istek üst üste (TV her biri için ~340 ms harcıyor); en son kare işlenir.
@@ -989,13 +989,22 @@ async function loop() {
   var latestShownSeq = 0;
   // Ekrandaki Türkçe satırlar: yeni cümle eskisini SİLMEZ, altına eklenir. En fazla 3 cümle; her biri okuma süresi kadar
   // (uzunluğuna göre 2,5–7 sn) kalır, süresi dolan üstten düşer. Geç gelen eski cümle, en yeninin üstüne yerleşir.
-  var lines = [];   // { tr, until }
+  var lines = [];   // { tr, en, until }
+  var incompleteAt = 0;   // son cümle noktalama işaretiyle bitmedi: devamı için yeniden okunacak
+  function endsSentence(en) { return /[.!?…]["'”’)\]]*\s*$/.test(String(en || '')); }
   function linesText() { return lines.map(function (e) { return e.tr; }).join('\n'); }
-  function pushLine(tr, older) {
+  function pushLine(tr, older, en) {
     var now = Date.now();
     lines = lines.filter(function (e) { return e.until > now; });
+    // Aynı cümlenin devamı geldiyse (ilk okumada ikinci satır eksikti) son satırı tam haliyle değiştir
+    var last = lines[lines.length - 1], ne = normEn(en || '');
+    if (!older && last && last.en && ne && ne !== normEn(last.en) && ne.indexOf(normEn(last.en)) === 0) {
+      last.tr = tr; last.en = en; last.until = Math.max(last.until, now + readTime(tr));
+      log('yarım cümle tamamlandı: ' + en);
+      return true;
+    }
     for (var i = 0; i < lines.length; i++) if (lines[i].tr === tr) { lines[i].until = Math.max(lines[i].until, now + 1500); return false; }
-    var e = { tr: tr, until: now + readTime(tr) };
+    var e = { tr: tr, en: en || '', until: now + readTime(tr) };
     if (older && lines.length) lines.splice(lines.length - 1, 0, e); else lines.push(e);
     while (lines.length > 3) lines.shift();
     return true;
@@ -1015,7 +1024,7 @@ async function loop() {
   function show(seq, sig, out, ms, bbox) {
     // Hızlı konuşmada çeviriler sırasız dönebilir; hiçbir cümle atılmaz.
     if (seq < latestShownSeq) {
-      if (out.tr && pushLine(out.tr, true)) {
+      if (out.tr && pushLine(out.tr, true, out.en)) {
         showLines(out.en, bbox || sig.bbox);
         log('geç gelen önceki cümle de eklendi: ' + (out.en || '-'));
         event({ tur: 'çok_satır', sebep: 'geç gelen', en: out.en, tr: shown });
@@ -1026,7 +1035,8 @@ async function loop() {
     if (stale && !out.tr) return;                         // eski istekten boş sonuç: ekrandakine dokunma
     latestShownSeq = seq;
     if (out.tr) {
-      var added = pushLine(out.tr, false);
+      var added = pushLine(out.tr, false, out.en);
+      incompleteAt = (out.en && !endsSentence(out.en)) ? Date.now() : 0;
       if (added && lines.length > 1) event({ tur: 'çok_satır', satır: lines.length, en: out.en });
       shownSig = stale ? null : sig;
       showLines(out.en, bbox || sig.bbox);
@@ -1094,13 +1104,21 @@ async function loop() {
         // Güvence okuması: Türkçe kutu İngilizceyi örttüğü için, benzer uzunluktaki yeni cümle kutunun altından fark
         // edilmeyebilir. Kutu açıkken 2,2 sn boyunca okuma yapılmadıysa bir kez okunur; yazı aynıysa ekran değişmez.
         safetyRead = false;
-        if (boxOpen && inFlight === 0 && !peekSince && Date.now() - lastReqAt > 2200 && Date.now() > quotaUntil && sigDiff(sig, lastSentSig) <= CHANGED) {
+        if (incompleteAt && Date.now() - incompleteAt > 600 && inFlight === 0 && !peekSince) {
+          incompleteAt = 0;
+          if (boxOpen && placement === 'cover') { peekSince = Date.now(); peekAckAt = 0; lastPeekAt = Date.now(); emit({ peek: true }); }
+          lastSentSig = null; freshNext = true; event({ tur: 'yarım_cümle_okuması' });
+          if (peekSince) continue;
+        }
+        if (boxOpen && inFlight === 0 && !peekSince && Date.now() - lastReqAt > 1800 && Date.now() > quotaUntil && sigDiff(sig, lastSentSig) <= CHANGED) {
+          // Kutunun altı karanlıkta okunamıyor: kutu bir an hafifçe açılır (göz atma), sonraki net kareyle okunur
+          if (placement === 'cover') { peekSince = Date.now(); peekAckAt = 0; lastPeekAt = Date.now(); emit({ peek: true, soft: true }); freshNext = true; stats.safety = (stats.safety || 0) + 1; event({ tur: 'güvence_okuması' }); lastSentSig = null; continue; }
           lastSentSig = null; safetyRead = true;
         }
         if (sigDiff(sig, lastSentSig) > CHANGED) {   // yeni / farklı yazı
           // Altyazı belirirken solup parlar: uçuşta aynı yazı için istek varsa yenisini gönderme.
           // (Referans güncellenmez: çeviri dönünce yazı hâlâ farklıysa yeni istek gider; arka arkaya gelen cümle kaçmaz.)
-          if (inFlight > 0 && sigDiff(sig, lastReqSig) < 0.25) continue;
+          if (inFlight > 0 && sigDiff(sig, lastReqSig) < 0.15) continue;
           // Kutu altındaki yeni İngilizce önce kutu tam koyuyken okunur (parlatılarak). Bu okuma başarısız olursa
           // kutu bir an %75 koyuluğa iner (göz atma) ve sonraki net kareyle tekrar okunur.
           var underBox = placement === 'cover' && boxOpen && shown && sigDiff(sig, shownSig) > CHANGED;
@@ -1111,12 +1129,13 @@ async function loop() {
             emit({ peek: true }); event({ tur: 'göz_atma', sebep: 'kutu altında yeni yazı' });
             lastSentSig = null; continue;
           }
+          var fresh = safetyRead || freshNext; freshNext = false;
           lastSentSig = sig; lastReqSig = sig; lastReqAt = Date.now();
           debugFrame(fr.buf, 'ISTEK', true);
           event({ tur: 'altyazı_görüldü', yakalama_ms: fr.capMs, kutu: boxOpen, yerlesim: placement });
           var seq = ++reqSeq, hit = null;
           if (underBox && !peekSince && Date.now() - lastPeekAt > 3000) underBoxReq[seq] = true;   // göz atmadan sonra tekrar döngüye girmesin
-          if (!safetyRead) for (var c = 0; c < sigCache.length; c++) {
+          if (!fresh) for (var c = 0; c < sigCache.length; c++) {
             var sc = sigCache[c];
             if (!sc.out.tr && (boxOpen || Date.now() - (sc.at || 0) > 6000)) continue;   // 'altyazı yok' cevabı kısa süre geçerli: cümle kaybolmasın
             if (sigDiff(sig, sc.sig) < SAME) { hit = sc.out; break; }
@@ -1124,7 +1143,7 @@ async function loop() {
           if (safetyRead) { stats.safety = (stats.safety || 0) + 1; event({ tur: 'güvence_okuması' }); }
           // (Not: şekil benzerliğiyle 'aynı cümle' tahmini kısa satırlarda yanlış eşleştirdi; kaldırıldı. Doğruluk önce.)
           lastTiming = 'yakalama ' + fr.capMs + ' ms, çözme ' + (tSig - tDec) + ' ms, imza ' + (Date.now() - tSig) + ' ms';
-          var fpHit = !hit && !underBox && !safetyRead && sig.bbox && fpLookup(sig.bbox.fp);
+          var fpHit = !hit && !underBox && !fresh && sig.bbox && fpLookup(sig.bbox.fp);
           if (fpHit) {
             hit = { en: fpHit.en, tr: fpHit.tr };
             stats.cacheHits++; stats.fpHits = (stats.fpHits || 0) + 1;

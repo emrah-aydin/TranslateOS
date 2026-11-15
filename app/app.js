@@ -57,7 +57,7 @@
     }
   }
   // Kutu koyuluğu: Türkçe varken %90; yeni İngilizceye "göz atarken" bir an %50 (servis net okuyabilsin).
-  var ALPHA_TEXT = 0.9, ALPHA_PEEK = 0.6, alpha = ALPHA_TEXT, hasText = false;   // göz atma: göze daha az belli olsun (alttaki İngilizce 4 kat parlatılarak okunur)
+  var ALPHA_TEXT = 0.9, ALPHA_PEEK = 0.6, ALPHA_SOFT = 0.72, alpha = ALPHA_TEXT, hasText = false;   // göz atma: göze daha az belli olsun (alttaki İngilizce 4 kat parlatılarak okunur)
   // Örtü rengi sahneden gelir (koyu ton); kenarlar aynı renkte yumuşak gölgeyle sahneye karışır.
   var bg = [0, 0, 0];
   function paint() {
@@ -269,7 +269,7 @@
       if (r.status === 'captureFailed') status('Bu TV ekran görüntüsü vermiyor; çeviri yapılamıyor. Lütfen GitHub\'da bildir.', 0);
       if (r.clear) hideSub();
       if (r.pending) pendingSub(r.bbox, r.peek);
-      else if (r.peek && subEl.style.display !== 'none') { setAlpha(ALPHA_PEEK); reportRect(true); }   // eski Türkçe kalır, kutu bir an açılır
+      else if (r.peek && subEl.style.display !== 'none') { setAlpha(r.soft ? ALPHA_SOFT : ALPHA_PEEK); reportRect(true); }   // soft: düzenli kontrol, göze daha az belli   // eski Türkçe kalır, kutu bir an açılır
       if (r.peekEnd && subEl.style.display !== 'none') { setAlpha(ALPHA_TEXT); reportRect(); }
       if (r.placement) placement = r.placement;
       if (r.bg) { bg = r.bg; paint(); }
