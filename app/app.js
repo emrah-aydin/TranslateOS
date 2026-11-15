@@ -9,7 +9,7 @@
   var menuEl = document.getElementById('menu');
   var badgeEl = document.getElementById('badge');
   var bridges = {};
-  var enabled = true, port = 1, statusTimer = null, lastBbox = null, menuTimer = null, menuCloseTimer = null, placement = 'cover';
+  var enabled = true, port = 1, statusTimer = null, lastBbox = null, menuTimer = null, menuCloseTimer = null, placement = 'above';
 
   // Her çağrı için tek köprü tutulur (abonelikler çöp toplayıcıya gitmesin).
   function luna(name, uri, params, cb) {
@@ -40,7 +40,10 @@
     if (placement === 'above') {
       // İngilizcenin üstünde: ikisi birlikte görünür (senkron kontrolü için). Normalde sabit yükseklik;
       // İngilizce daha yukarıdan başlıyorsa (3 satır gibi) kutu o cümle için yukarı çıkar, İngilizceye asla binmez.
-      subEl.style.bottom = Math.max(ABOVE_BOTTOM, Math.round((1 - b.y0) * H + 14)) + 'px';
+      // İngilizcenin hemen üstü (10 px boşluk). Kutu açıkken servis İngilizce alanını sadece büyütür; böylece konuşma
+      // boyunca kutu en yüksek konumda sabit kalır, satır sayısı değiştikçe zıplamaz.
+      subEl.style.bottom = Math.round((1 - b.y0) * H + 10) + 'px';
+      subEl.style.maxWidth = '1100px';   // mini haritaya binmesin
       subEl.style.minWidth = '0px';
       subEl.style.minHeight = '0px';
     } else {

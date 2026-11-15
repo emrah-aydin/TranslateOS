@@ -31,7 +31,7 @@ function writeFileSafe(file, data, cb) {
 function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE + '.tmp', JSON.stringify(SETTINGS)); fs.renameSync(SETTINGS_FILE + '.tmp', SETTINGS_FILE); return true; } catch (e) { return false; } }
 var MODEL = CONFIG.model || 'gemini-flash-lite-latest';  // TV'den ölçüm: 0,7–1,0 sn (kalıcı bağlantıyla)
 var KEY_FILE = '/tmp/translateos_app_client_key';
-var placement = 'cover';   // Türkçe her zaman İngilizcenin üzerini kapatır
+var placement = CONFIG.placement === 'cover' ? 'cover' : 'above';   // Türkçe İngilizcenin hemen üstünde (örtmez: İngilizce her an net okunur, karışmaz)
 
 // Altyazı bölgesi (kare oranı). Türkçe kutumuz bunun ÜSTÜNDE durur, bu yüzden bu bölgeye girmez.
 var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.865, y1: 1.0 };
@@ -1352,7 +1352,7 @@ service.register('start', function (message) {
 service.register('stop', function (m) { running = false; m.respond({ returnValue: true }); });
 service.register('setPlacement', function (m) {
   var p = m.payload && m.payload.placement;
-  if (p === 'cover') { placement = p; log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
+  if (p === 'cover' || p === 'above') { placement = p; log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
   m.respond({ returnValue: true, placement: placement });
 });
 service.register('boxRect', function (m) {
