@@ -8,7 +8,7 @@ Bilgisayar, kamera, capture card ya da başka bir cihaz gerekmez. PS5 HDMI ile T
 
 > GTA 5 Türkçe altyazı · GTA 6 Türkçe yama · PS5 Türkçe çeviri · LG TV oyun çevirmeni · yapay zekâ ile anlık altyazı
 
-![GTA 5'te TranslateOS ile Türkçe altyazı: tekne görevi](docs/screenshots/gta5-turkce-altyazi-tekne.jpg)
+![GTA 5'te TranslateOS ile Türkçe altyazı: sarı Türkçe, İngilizcenin hemen üstünde; önceki cümle soluk](docs/screenshots/gta5-turkce-altyazi-sari.jpg)
 
 <p align="center">
   <img src="docs/screenshots/gta5-turkce-altyazi-otoyol.jpg" width="49%" alt="GTA 5 Türkçe altyazı: otoyolda takip">
@@ -19,7 +19,7 @@ Bilgisayar, kamera, capture card ya da başka bir cihaz gerekmez. PS5 HDMI ile T
   <img src="docs/screenshots/gta5-turkce-altyazi-1.jpg" width="49%" alt="GTA 5 Türkçe altyazı: gece telefon görüşmesi">
 </p>
 
-*Ekran görüntüleri doğrudan TV'den alınmıştır: PS5'te GTA V, LG QNED TV, TranslateOS açık. Türkçe altyazı, oyunun İngilizce altyazısının tam üstüne yazılıyor.*
+*Ekran görüntüleri doğrudan TV'den alınmıştır: PS5'te GTA V, LG QNED TV, TranslateOS açık. Üstteki görüntü yeni çeviri ekranı: sarı Türkçe İngilizcenin hemen üstünde, bir önceki cümle soluk olarak duruyor. Alttaki görüntüler önceki sürümden (Türkçe İngilizcenin yerine); bu düzen hâlâ Sarı tuşla seçilebiliyor.*
 
 ### Canlı test sonucu
 
@@ -39,14 +39,14 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - 🎮 **Oyun TV'de, altyazı Türkçe.** PS5'te her zamanki gibi oynarsın; İngilizce altyazının yerinde Türkçesi görünür.
 - 🧠 **Yapay zekâ ile okuma ve çeviri.** Altyazı bölgesi Google Gemini'ye gider; model tek istekte hem okur hem çevirir.
 - 🔥 **Sansürsüz, doğal çeviri.** Sokak ağzı, argo ve küfür yumuşatılmadan, oyundaki sertliğiyle Türkçeye aktarılır. Çeviri yalnızca Türkçedir.
-- ⚡ **Hızlı.** Altyazı göründükten yaklaşık 1–2 saniye sonra Türkçesi gelir. Aynı cümle ikinci kez çevrilmez, hafızadan gelir.
-- 🕶️ **Okunaklı çeviri ekranı.** Türkçe, İngilizcenin hemen üstünde sabit bir kutuda durur; harfler karışmaz. Hızlı konuşmada 3 cümleye kadar alt alta yığılır: en yenisi parlak, öncekiler soluk.
+- ⚡ **Hızlı.** Altyazı göründükten yaklaşık 1–1,5 saniye sonra Türkçesi gelir. Daha önce herhangi bir oyuncunun gördüğü cümleler, yazının şeklinden tanınıp Gemini'ye sorulmadan anında gösterilir.
+- 🕶️ **Okunaklı çeviri ekranı.** Türkçe sarı ve İngilizcenin hemen üstünde; harfler karışmaz, beyaz İngilizceden bir bakışta ayrılır. Bir önceki cümle her zaman üstte küçük ve soluk durur, kaçırdığın cümleyi orada bulursun. İstersen Sarı tuşla Türkçeyi İngilizcenin yerine alabilirsin.
 - 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe biraz geriden ama sırayla gelir; hiçbir cümle silinmez. Tek kelimelik ünlemler ve alttaki görev yazıları da çevrilir.
 - 🔑 **Anahtar gerekmez.** Çeviri TranslateOS sunucusu üzerinden yapılır; isteyen Mavi tuşla kendi ücretsiz Gemini anahtarını girip günlük sınırsız kullanabilir.
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
 - 🌍 **Ortak hafıza.** Bir oyuncunun çevirdiği cümle herkese anında ve ücretsiz gelir; oyuncu arttıkça çeviri hızlanır, Gemini kullanımı azalır. Sunucuya resim gitmez, sadece İngilizce cümle ve Türkçesi; isim, e-posta ya da IP saklanmaz.
-- 📺 **Kumanda ile kontrol.** OK ya da Yeşil: menü · Mavi: kendi Gemini anahtarını gir · 1–4: HDMI girişi · Geri: çıkış.
+- 📺 **Kumanda ile kontrol.** OK ya da Yeşil: menü · Sarı: Türkçe üstte / altta · Mavi: kendi Gemini anahtarını gir · 1–4: HDMI girişi · Geri: çıkış.
 - 🔌 **Doğru HDMI girişi kendiliğinden seçilir.** PS5 hangi girişe bağlıysa TranslateOS onu açar; rakam tuşlarıyla seçilen giriş hatırlanır.
 - 🔌 **Sadece açınca çalışır.** TV açılınca kendiliğinden başlamaz. Geri tuşuyla tamamen kapanır, arka planda çalışmaz ve TV normal HDMI görüntüsüne döner.
 - 🔁 **Developer Mode süresi kendiliğinden uzar.**
@@ -54,7 +54,7 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 
 ## TV menüsü
 
-Yeşil tuşla açılır, 10 saniyede kendiliğinden kapanır: tuşlar ve bağlantılar.
+OK (ya da Yeşil) tuşuyla açılır, 10 saniyede kendiliğinden kapanır: çevirinin yeri, tuşlar ve bağlantılar.
 
 ![TranslateOS TV menüsü](docs/screenshots/translateos-menu.jpg)
 
