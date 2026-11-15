@@ -672,6 +672,13 @@ function raceTranslate(jpg, onEarly) {
     var fired = false, done = false, fails = 0;
     function early(tr, ms, src, en) { if (!fired) { fired = true; onEarly(tr, ms, src, en); } }
     var par = CONFIG.parallel || (CONFIG.geminiKey ? PARALLEL : 1);   // anahtarsız modda tek istek (ortak kota ve fatura için)
+    // Anahtarsız modda yedek: 1,5 sn içinde Türkçe gelmediyse (normali ~1,2 sn) aynı istek bir kez daha gider, önce dönen kullanılır.
+    if (par === 1) setTimeout(function () {
+      if (fired || done) return;
+      par = 2; stats.hedges = (stats.hedges || 0) + 1;
+      readAndTranslateFast(jpg, early).then(function (r) { r.hedged = true; if (!done) { done = true; resolve(r); } },
+        function (e) { fails++; if (fails >= par && !done) { done = true; reject(e); } });
+    }, 1500);
     for (var i = 0; i < par; i++) {
       readAndTranslateFast(jpg, early).then(function (r) { if (!done) { done = true; resolve(r); } },
         function (e) { fails++; if (fails >= par && !done) { done = true; reject(e); } });
@@ -917,17 +924,26 @@ async function loop() {
       boxBbox = union(boxBbox, b); emit({ bbox: boxBbox, placement: placement });
     }
   }
-  var latestShownSeq = 0;
+  var latestShownSeq = 0, lastShownAt = 0;
   function show(seq, sig, out, ms, bbox) {
     // Hızlı konuşmada çeviri, ekranda bir sonraki cümle belirdikten sonra dönebilir. Böyle geç gelen çeviri ATILMAZ:
     // gösterilir, sıradaki cümlenin çevirisi gelince onun yerini alır (altyazı ~1 sn geriden ama eksiksiz akar).
-    // Atlanan tek durum: daha yeni bir cümlenin çevirisi zaten gösterilmişse.
-    if (seq < latestShownSeq) { log('atlandı (daha yenisi gösterildi): ' + (out.en || '-')); return; }
+    // Daha yeni bir cümlenin çevirisi önce gelmişse eski cümle de kaybolmaz: kısa süre üst satırda birlikte gösterilir.
+    if (seq < latestShownSeq) {
+      if (out.tr && shown && shown.indexOf(out.tr) < 0 && Date.now() - lastShownAt < 5000) {
+        var both = out.tr + '\n' + shown.split('\n').pop();
+        shown = both; pendingSince = 0; minUntil = Math.max(minUntil, Date.now() + readTime(both));
+        openBox({ en: out.en, tr: both, bbox: bbox || sig.bbox });
+        log('geç gelen önceki cümle üst satıra eklendi: ' + (out.en || '-'));
+        event({ tur: 'iki_satır', en: out.en, tr: out.tr });
+      } else log('atlandı (daha yenisi gösterildi): ' + (out.en || '-'));
+      return;
+    }
     var stale = seq !== reqSeq;
     if (stale && !out.tr) return;                         // eski istekten boş sonuç: ekrandakine dokunma
     latestShownSeq = seq;
     if (out.tr) {
-      shown = out.tr; shownSig = stale ? null : sig; pendingSince = 0; minUntil = Date.now() + readTime(out.tr);
+      shown = out.tr; shownSig = stale ? null : sig; pendingSince = 0; minUntil = Date.now() + readTime(out.tr); lastShownAt = Date.now();
       openBox({ en: out.en, tr: out.tr, bbox: bbox || sig.bbox });
       if (stale) log('geç gelen çeviri gösterildi (sıradaki yolda)');
     }
