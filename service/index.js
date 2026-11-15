@@ -34,7 +34,7 @@ var KEY_FILE = '/tmp/translateos_app_client_key';
 var placement = (SETTINGS.placement || CONFIG.placement) === 'cover' ? 'cover' : 'above';
 
 // Altyazı bölgesi (kare oranı). Türkçe kutumuz bunun ÜSTÜNDE durur, bu yüzden bu bölgeye girmez.
-var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.865, y1: 1.0 };
+var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.878, y1: 1.0 };   // üstü: iki satırlık altyazının başı (~%88,8); Türkçe kutu bunun hemen üstünde durur
 
 var subscribers = [];
 var running = false;

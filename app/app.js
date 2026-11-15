@@ -30,7 +30,7 @@
   // Kutu SABİT bir yerde durur: her zaman ekranın tam ortasında ve aynı yükseklikte (kaymasın).
   // Yalnızca genişliği/yüksekliği Türkçe metne göre değişir. GTA altyazısı hep ortada; iki satırlık İngilizcenin
   // üstü ~%88,8, alt kenarı ~%95,5 yükseklikte (ölçüm).
-  var ABOVE_BOTTOM = 152;   // px: altyazı bölgesinin (%86,5 = 934 px) hemen üstü; iki satırlık İngilizcenin de üstünde kalır
+  var ABOVE_BOTTOM = 134;   // px: altyazı bölgesinin (%87,8 = 948 px) hemen üstü; iki satırlık İngilizcenin de üstünde kalır
   var COVER_BOTTOM = 36;    // px: İngilizcenin alt kenarının biraz altı; kutu yukarı doğru büyür
   function placeBox(bbox) {
     var padX = 26, padY = 12;
