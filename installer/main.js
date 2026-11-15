@@ -20,6 +20,9 @@ const APP_ID = 'com.translateos.app';
 const REPO = 'emrah-aydin/TranslateOS';
 const TV_TMP = '/media/developer/temp/translateos.ipk';
 const LUNA = '/usr/bin/luna-send-pub';
+const NET_HINT = process.platform === 'darwin'
+  ? ' Mac\'te ayrıca: Sistem Ayarları › Gizlilik ve Güvenlik › Yerel Ağ bölümünde "TranslateOS Kurulum" açık olmalı.'
+  : process.platform === 'win32' ? ' Windows güvenlik duvarı izin isterse "İzin ver"e bas.' : '';
 
 // ---------- yardımcılar ----------
 function httpGetBuf(url, { timeout = 8000, headers = {}, redirects = 5 } = {}) {
@@ -213,7 +216,7 @@ async function runInstall(ip, code, report) {
   if (!(await portOpen(ip, 9922, 3000))) {
     // 3001: her LG webOS TV'de açık olan uzaktan kumanda bağlantısı. Açıksa TV var ama Developer Mode kapalı.
     if (await portOpen(ip, 3001, 2000)) throw Object.assign(new Error(`Bu TV'de Developer Mode kapalı görünüyor (${ip}). Developer Mode uygulamasında "Dev Mode Status" ON olmalı.`), { friendly: true });
-    throw Object.assign(new Error(`${ip} adresinde TV bulunamadı. TV açık mı, bilgisayarla aynı Wi-Fi ağında mı? IP adresini Developer Mode uygulamasından kontrol et.`), { friendly: true });
+    throw Object.assign(new Error(`${ip} adresinde TV'ye ulaşılamadı. TV açık mı, bilgisayarla aynı Wi-Fi ağında mı? IP adresini Developer Mode uygulamasından kontrol et.` + NET_HINT), { friendly: true });
   }
   let keyPem;
   try { keyPem = (await httpGetBuf(`http://${ip}:9991/webos_rsa`, { timeout: 6000 })).toString(); }
@@ -290,7 +293,7 @@ function startUi() {
     if (route === 'GET /') {
       pageOpened = true;
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:" });
-      return res.end(html.replace('__TOKEN__', token));
+      return res.end(html.replace('__TOKEN__', token).replace('__PLATFORM__', process.platform));
     }
     if (route === 'GET /scan') return discover().then((list) => json({ tvs: list }));
     if (route === 'GET /probe') {

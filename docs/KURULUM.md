@@ -39,7 +39,7 @@ LG webOS TV'ye TranslateOS'u kurmak yaklaşık **10 dakika** sürer. Bir kez yap
 
 1. İndirdiğin programı çift tıklayarak aç. Tarayıcında bir kurulum sayfası açılır.
    - **Windows:** "Windows bilgisayarınızı korudu" uyarısı çıkarsa **Ek bilgi** › **Yine de çalıştır**'a bas.
-   - **Mac:** Zip'i aç, **TranslateOS Kurulum**'u çift tıkla. "Açılamıyor" uyarısı çıkarsa **Sistem Ayarları › Gizlilik ve Güvenlik**'e gir, en altta **Yine de Aç**'a bas.
+   - **Mac:** Zip'i aç, **TranslateOS Kurulum**'u çift tıkla. "Açılamıyor" uyarısı çıkarsa **Sistem Ayarları › Gizlilik ve Güvenlik**'e gir, en altta **Yine de Aç**'a bas. Ardından Mac "yerel ağdaki aygıtları bulmak istiyor" diye sorar: **İzin Ver**'e bas. Bu izin olmadan program TV'yi göremez.
 2. Sayfa ağdaki LG TV'ni kendisi bulur. Bulamazsa TV'nin IP adresini elle yaz.
 3. Developer Mode uygulamasındaki **Passphrase**'i (6 karakter) yaz, **TranslateOS'u kur**'a bas.
 4. Bir dakikadan kısa sürede kurulum biter ve TranslateOS TV'nde kendiliğinden açılır.
@@ -79,7 +79,7 @@ Bitti. PS5'te altyazılı bir oyun aç; İngilizce altyazılar Türkçe olarak o
 
 - **QR kodu okutunca sayfa açılmıyor:** Telefon ve TV aynı Wi-Fi ağında olmalı. Misafir ağı ya da mobil veri çalışmaz.
 - **"Bu TV ekran görüntüsü vermiyor" yazıyor:** TV modelin henüz desteklenmiyor olabilir. Lütfen modelini ve webOS sürümünü (Ayarlar › Genel › Cihaz › TV Bilgisi) [GitHub'da bildir](https://github.com/emrah-aydin/TranslateOS/issues).
-- **Kurulum programı TV'yi bulamıyor:** TV ile bilgisayar aynı Wi-Fi ağında mı? TV'nin IP adresini Developer Mode uygulamasından okuyup sayfaya elle yaz.
+- **Kurulum programı TV'yi bulamıyor:** TV ile bilgisayar aynı Wi-Fi ağında mı? TV'nin IP adresini Developer Mode uygulamasından okuyup sayfaya elle yaz. Mac'te yerel ağ iznini yanlışlıkla reddettiysen: **Sistem Ayarları › Gizlilik ve Güvenlik › Yerel Ağ** bölümünde **TranslateOS Kurulum**'u aç, programı kapatıp yeniden aç.
 - **"Kod yanlış" diyor:** Developer Mode uygulamasındaki Passphrase'i kontrol et. Key Server'ı kapatıp açınca kod değişebilir.
 - **Uygulama listeden kayboldu:** Developer Mode kapanmış olabilir. 2. adımı tekrarla, sonra kurulum programını yeniden çalıştır.
 - **Görüntü siyah kaldı:** Kumandadan giriş tuşuna (Input) basıp HDMI girişini yeniden seç.
