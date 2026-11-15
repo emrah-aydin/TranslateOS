@@ -74,7 +74,6 @@ Bitti. PS5'te altyazılı bir oyun aç; İngilizce altyazılar Türkçe olarak o
 
 | Tuş | Ne yapar |
 |---|---|
-| 🔴 Kırmızı | Türkçeyi gizle / göster |
 | 🟢 Yeşil | Menü |
 | 🔵 Mavi | Gemini anahtarını değiştir (QR ekranı) |
 | Geri | TranslateOS'u kapat, normal TV'ye dön |

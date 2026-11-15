@@ -45,7 +45,8 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
 - 🌍 **Ortak hafıza.** Bir oyuncunun çevirdiği cümle herkese anında ve ücretsiz gelir; oyuncu arttıkça çeviri hızlanır, Gemini kullanımı azalır. Sunucuya resim gitmez, sadece İngilizce cümle ve Türkçesi; isim, e-posta ya da IP saklanmaz.
-- 📺 **Kumanda ile kontrol.** Kırmızı: Türkçeyi gizle/göster · Yeşil: menü · Mavi: anahtarı değiştir · Geri: çıkış.
+- 📺 **Kumanda ile kontrol.** Yeşil: menü · Mavi: kendi Gemini anahtarını gir · Geri: çıkış.
+- 🔌 **Sadece açınca çalışır.** TV açılınca kendiliğinden başlamaz. Geri tuşuyla tamamen kapanır, arka planda çalışmaz ve TV normal HDMI görüntüsüne döner.
 - 🔁 **Developer Mode süresi kendiliğinden uzar.**
 - 😴 **TV uyumaz.** Kumandaya dokunmasan da oyun sırasında ekran koruyucu devreye girmez; girerse ekran hemen geri açılır.
 

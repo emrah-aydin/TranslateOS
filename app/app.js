@@ -213,13 +213,7 @@
   }, 10000);
 
   document.addEventListener('keydown', function (e) {
-    if (e.keyCode === KEY.RED) {
-      enabled = !enabled;
-      if (!enabled) hideSub();
-      status(enabled ? 'Türkçe altyazı gösteriliyor' : 'Türkçe altyazı gizlendi (Kırmızı: geri aç)', 2500);
-      if (menuEl.style.display === 'block') refreshMenu();
-      e.preventDefault();
-    } else if (e.keyCode === KEY.BLUE) {
+    if (e.keyCode === KEY.BLUE) {
       if (setupEl.style.display === 'block') hideSetup(); else showSetup();
       e.preventDefault();
     } else if (e.keyCode === KEY.GREEN || e.keyCode === KEY.OK) {
