@@ -9,12 +9,19 @@
 //   GET  /v1/pack[?since=<ms>]     → { now, lines: { k: tr } }
 //   POST /v1/add  { device, token, lines: [{ en, tr }] } → { added }
 //   GET  /v1/stats                 → { lines, devices }
+//   POST /v1/gemini/<model>:<method>  (x-device, x-token)  → anahtarsız mod: Gemini isteğini sunucunun anahtarıyla iletir
 //   POST /v1/admin/purge { device } (Authorization: Bearer ADMIN_KEY) → TV'nin eklediklerini sil, TV'yi engelle
 
 const MAX_BATCH = 50;          // tek istekte en fazla cümle
 const DAILY_ADDS = 3000;       // TV başına günlük yeni cümle sınırı
 const PACK_CACHE_SEC = 600;    // tam paket 10 dk önbellekte
 const REG_PER_DAY = 20;        // aynı bağlantıdan günlük yeni TV kaydı
+// Anahtarsız mod sınırları (Cloudflare ortam değişkeniyle değiştirilebilir: DEVICE_DAILY, GLOBAL_DAILY)
+const DEVICE_DAILY = 1500;     // TV başına günlük çeviri isteği
+const GLOBAL_DAILY = 20000;    // herkes için toplam günlük çeviri isteği (fatura tavanı)
+const MAX_BODY = 400000;       // istek boyutu (bayt)
+// Ortak hafızaya giriş: aynı cümleyi bu kadar farklı TV aynı okumalı (güvenilir TV'ler tek başına yeter)
+const MIN_CONFIRM = 2;
 
 // TV servisiyle AYNI normalleştirme (service/index.js → normEn)
 function normEn(t) { return String(t).toLowerCase().replace(/[^a-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
@@ -34,6 +41,37 @@ function safeEqual(a, b) {
   let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0;
 }
 const today = () => new Date().toISOString().slice(0, 10);
+const minConfirm = (env) => Number(env.MIN_CONFIRM || MIN_CONFIRM);
+
+// --- Anahtarsız mod: TV'nin Gemini isteğini sunucunun anahtarıyla iletir ---
+async function geminiProxy(req, env, url, model, method) {
+  if (!env.GEMINI_KEY) return json({ error: 'anahtarsız mod kapalı' }, 503);
+  const device = req.headers.get('x-device') || '', token = req.headers.get('x-token') || '';
+  if (!device || !safeEqual(token, await hmac(env.SECRET, device))) return json({ error: 'kimlik geçersiz' }, 401);
+  if (model !== (env.GEMINI_MODEL || 'gemini-flash-lite-latest')) return json({ error: 'model desteklenmiyor' }, 400);
+  const raw = await req.text();
+  if (raw.length > MAX_BODY) return json({ error: 'istek çok büyük' }, 413);
+  let body; try { body = JSON.parse(raw); } catch (e) { return json({ error: 'geçersiz istek' }, 400); }
+  // Sadece altyazı çevirisi biçimindeki istekler: 1 resim + 1 metin
+  const parts = body && body.contents && body.contents.length === 1 && body.contents[0].parts;
+  if (!Array.isArray(parts) || parts.length > 2 || parts.filter((p) => p.inline_data || p.inlineData).length !== 1 ||
+      parts.some((p) => p.text && p.text.length > 3000)) return json({ error: 'geçersiz istek' }, 400);
+  body.generationConfig = Object.assign({}, body.generationConfig || {}, { maxOutputTokens: 400, candidateCount: 1 });
+  delete body.tools; delete body.systemInstruction; delete body.cachedContent;
+
+  // Kota: önce toplam tavan, sonra TV başına
+  const day = today();
+  const g = await env.DB.prepare('INSERT INTO usage (day, n) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET n = n + 1 RETURNING n').bind(day).first();
+  if (g.n > Number(env.GLOBAL_DAILY || GLOBAL_DAILY)) return json({ error: 'quota', scope: 'global' }, 429);
+  const d = await env.DB.prepare('UPDATE devices SET gday = ?, gcount = CASE WHEN gday = ? THEN gcount + 1 ELSE 1 END WHERE id = ? AND banned = 0 RETURNING gcount').bind(day, day, device).first();
+  if (!d) return json({ error: 'kimlik geçersiz' }, 401);
+  if (d.gcount > Number(env.DEVICE_DAILY || DEVICE_DAILY)) return json({ error: 'quota', scope: 'device' }, 429);
+
+  const up = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':' + method + (method === 'streamGenerateContent' ? '?alt=sse' : ''), {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY }, body: JSON.stringify(body),
+  });
+  return new Response(up.body, { status: up.status, headers: { 'Content-Type': up.headers.get('Content-Type') || 'application/json' } });
+}
 
 function validLine(en, tr) {
   en = String(en || '').trim(); tr = String(tr || '').trim();
@@ -73,13 +111,13 @@ export default {
           const cache = caches.default, ck = new Request(url.origin + '/v1/pack#full');
           const hit = await cache.match(ck);
           if (hit) return hit;
-          const { results } = await env.DB.prepare('SELECT k, tr FROM lines').all();
+          const { results } = await env.DB.prepare('SELECT k, tr FROM lines WHERE confirm >= ?').bind(minConfirm(env)).all();
           const lines = {}; for (const r of results) lines[r.k] = r.tr;
           const res = json({ now, lines }, 200, { 'Cache-Control': `public, max-age=${PACK_CACHE_SEC}` });
           ctx.waitUntil(cache.put(ck, res.clone()));
           return res;
         }
-        const { results } = await env.DB.prepare('SELECT k, tr FROM lines WHERE updated > ?').bind(since - 60000).all();
+        const { results } = await env.DB.prepare('SELECT k, tr FROM lines WHERE updated > ? AND confirm >= ?').bind(since - 60000, minConfirm(env)).all();
         const lines = {}; for (const r of results) lines[r.k] = r.tr;
         return json({ now, lines });
       }
@@ -97,20 +135,30 @@ export default {
         const take = items.slice(0, room);
         if (!take.length) return json({ added: 0, limit: room === 0 });
         const now = Date.now();
-        // İlk gelen çeviri kalır; aynı cümle tekrar gelirse sadece "seen" artar.
+        // İlk gelen çeviri kalır. Aynı cümleyi BAŞKA bir TV de okursa onay artar; yeterli onayla herkese açılır.
+        // Güvenilir TV'lerin (TRUSTED_DEVICES) eklediği cümle hemen onaylı sayılır.
+        const trusted = String(env.TRUSTED_DEVICES || '').split(',').map((x) => x.trim()).includes(device);
+        const first = trusted ? 99 : 1;
         const stmts = take.map((l) => env.DB.prepare(
-          'INSERT INTO lines (k, en, tr, device, created, updated) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(k) DO UPDATE SET seen = seen + 1'
-        ).bind(l.k, l.en, l.tr, device, now, now));
+          'INSERT INTO lines (k, en, tr, device, confirm, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?) ' +
+          'ON CONFLICT(k) DO UPDATE SET seen = seen + 1, ' +
+          'confirm = CASE WHEN lines.device != excluded.device THEN MAX(lines.confirm + 1, excluded.confirm) ELSE MAX(lines.confirm, excluded.confirm) END, ' +
+          'updated = CASE WHEN lines.device != excluded.device OR excluded.confirm > lines.confirm THEN excluded.updated ELSE lines.updated END'
+        ).bind(l.k, l.en, l.tr, device, first, now, now));
         stmts.push(env.DB.prepare('UPDATE devices SET day = ?, adds = ? WHERE id = ?').bind(today(), used + take.length, device));
         await env.DB.batch(stmts);
         return json({ added: take.length });
       }
 
       if (path === '/v1/stats' && req.method === 'GET') {
-        const a = await env.DB.prepare('SELECT COUNT(*) AS n FROM lines').first();
+        const a = await env.DB.prepare('SELECT COUNT(*) AS n, SUM(confirm >= ?) AS c FROM lines').bind(minConfirm(env)).first();
         const b = await env.DB.prepare('SELECT COUNT(*) AS n FROM devices').first();
-        return json({ lines: a.n, devices: b.n });
+        const u = await env.DB.prepare('SELECT n FROM usage WHERE day = ?').bind(today()).first();
+        return json({ lines: a.n, shared: a.c || 0, devices: b.n, translatedToday: u ? u.n : 0, keyless: !!env.GEMINI_KEY });
       }
+
+      const gm = path.match(/^\/v1\/gemini\/([a-z0-9.\-]+):(streamGenerateContent|generateContent)$/);
+      if (gm && req.method === 'POST') return geminiProxy(req, env, url, gm[1], gm[2]);
 
       if (path === '/v1/admin/purge' && req.method === 'POST') {
         const auth = req.headers.get('Authorization') || '';

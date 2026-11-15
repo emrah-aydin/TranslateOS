@@ -96,3 +96,8 @@ Kurulum programını kullanmak istemezsen `.ipk` dosyasını [son sürümden](ht
 ## Kaldırma
 
 TV'nin ana ekranında TranslateOS'un üstüne gel, **OK** tuşuna basılı tut ve **Kaldır**'ı seç. Bu yol TV menüsünde de yazar.
+
+## Ortak hafıza ve gizlilik
+
+TranslateOS çevirdiği cümleleri (İngilizce ve Türkçesi) ortak hafıza sunucusuna gönderir ve diğer oyuncuların çevirilerini indirir. Böylece aynı cümle herkese anında gelir. Sunucuya ekran görüntüsü gitmez; isim, e-posta ya da IP adresi saklanmaz, TV sadece rastgele bir kimlik numarası alır. Gemini anahtarın sadece TV'nde durur.
+

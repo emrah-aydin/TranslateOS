@@ -1,0 +1,5 @@
+-- 2. sürüm: iki TV onayı ve anahtarsız mod kotası
+ALTER TABLE lines ADD COLUMN confirm INTEGER DEFAULT 1;
+ALTER TABLE devices ADD COLUMN gday TEXT;
+ALTER TABLE devices ADD COLUMN gcount INTEGER DEFAULT 0;
+CREATE TABLE IF NOT EXISTS usage (day TEXT PRIMARY KEY, n INTEGER DEFAULT 0);

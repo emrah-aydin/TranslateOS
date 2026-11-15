@@ -520,15 +520,46 @@ function looksTurkish(t, en) {
 
 // Kalıcı bağlantı: her istekte yeniden TLS el sıkışması yapılmasın (TV işlemcisinde pahalı).
 var geminiAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10000, maxSockets: 4 });
+var proxyAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10000, maxSockets: 4 });
+// Anahtarsız mod: TV'nin kendi Gemini anahtarı yoksa istekler TranslateOS sunucusundan geçer (sunucunun anahtarıyla).
+var keylessReady = false, quotaUntil = 0;
+function canTranslate() { return !!CONFIG.geminiKey || keylessReady; }
+function geminiTarget(p) {
+  if (CONFIG.geminiKey) return { host: 'generativelanguage.googleapis.com', path: p, agent: geminiAgent, headers: { 'x-goog-api-key': CONFIG.geminiKey } };
+  return { host: new URL(SHARED_URL).hostname, agent: proxyAgent,
+    path: p.replace('/v1beta/models/', '/v1/gemini/').replace('?alt=sse', ''),
+    headers: { 'x-device': SETTINGS.device || '', 'x-token': SETTINGS.deviceToken || '' } };
+}
+// Sunucu "kota doldu" (429) ya da "kimlik geçersiz" (401) derse
+function proxyStatus(status, text) {
+  if (CONFIG.geminiKey) return;
+  if (status === 429 && /quota/.test(text || '')) {
+    var global = /global/.test(text || '');
+    if (Date.now() > quotaUntil) { log('Ortak çeviri kotası doldu (' + (global ? 'herkes' : 'bu TV') + ')'); emit({ status: 'quota', scope: global ? 'global' : 'device' }); }
+    quotaUntil = Date.now() + 15 * 60000;
+  }
+  if (status === 401) { keylessReady = false; delete SETTINGS.device; delete SETTINGS.deviceToken; saveSettings(); setupKeyless().catch(function () {}); }
+}
+async function setupKeyless() {
+  if (CONFIG.geminiKey) return true;
+  var ok = await sharedRegister();
+  if (ok) {
+    var r = await sharedReq('GET', '/v1/stats');
+    keylessReady = !!(r.json && r.json.keyless);
+  }
+  log(keylessReady ? 'Anahtarsız mod: çeviri TranslateOS sunucusundan' : 'Anahtarsız mod kullanılamıyor');
+  return keylessReady;
+}
 function httpsJson(method, pathName, body) {
   return new Promise(function (resolve, reject) {
     var data = body ? Buffer.from(JSON.stringify(body)) : null;
-    var req = https.request({ host: 'generativelanguage.googleapis.com', path: pathName, method: method, agent: geminiAgent,
-      headers: Object.assign({ 'x-goog-api-key': CONFIG.geminiKey }, data ? { 'Content-Type': 'application/json', 'Content-Length': data.length } : {}) },
+    var tg = geminiTarget(pathName);
+    var req = https.request({ host: tg.host, path: tg.path, method: method, agent: tg.agent,
+      headers: Object.assign(tg.headers, data ? { 'Content-Type': 'application/json', 'Content-Length': data.length } : {}) },
       function (res) {
         var chunks = [];
         res.on('data', function (c) { chunks.push(c); });
-        res.on('end', function () { resolve({ status: res.statusCode, text: Buffer.concat(chunks).toString('utf8'), reused: req.reusedSocket }); });
+        res.on('end', function () { var t = Buffer.concat(chunks).toString('utf8'); proxyStatus(res.statusCode, t); resolve({ status: res.statusCode, text: t, reused: req.reusedSocket }); });
       });
     req.on('error', reject);
     req.setTimeout(8000, function () { req.destroy(new Error('Gemini zaman aşımı')); });
@@ -571,8 +602,9 @@ function geminiStream(body, thinking, onText) {
     if (thinking === 'budget') cfg.thinkingConfig = { thinkingBudget: 0 };
     body.generationConfig = cfg; body.safetySettings = SAFETY;
     var data = Buffer.from(JSON.stringify(body));
-    var req = https.request({ host: 'generativelanguage.googleapis.com', path: '/v1beta/models/' + MODEL + ':streamGenerateContent?alt=sse', method: 'POST', agent: geminiAgent,
-      headers: { 'x-goog-api-key': CONFIG.geminiKey, 'Content-Type': 'application/json', 'Content-Length': data.length } }, function (res) {
+    var tg = geminiTarget('/v1beta/models/' + MODEL + ':streamGenerateContent?alt=sse');
+    var req = https.request({ host: tg.host, path: tg.path, method: 'POST', agent: tg.agent,
+      headers: Object.assign(tg.headers, { 'Content-Type': 'application/json', 'Content-Length': data.length }) }, function (res) {
       var buf = '', full = '', raw = '';
       res.setEncoding('utf8');
       res.on('data', function (c) {
@@ -591,7 +623,7 @@ function geminiStream(body, thinking, onText) {
           });
         }
       });
-      res.on('end', function () { resolve({ status: res.statusCode, text: res.statusCode === 200 ? full : raw, reused: req.reusedSocket }); });
+      res.on('end', function () { if (res.statusCode !== 200) proxyStatus(res.statusCode, raw); resolve({ status: res.statusCode, text: res.statusCode === 200 ? full : raw, reused: req.reusedSocket }); });
     });
     req.on('error', reject);
     req.setTimeout(8000, function () { req.destroy(new Error('Gemini zaman aşımı')); });
@@ -637,9 +669,10 @@ function raceTranslate(jpg, onEarly) {
   return new Promise(function (resolve, reject) {
     var fired = false, done = false, fails = 0;
     function early(tr, ms, src, en) { if (!fired) { fired = true; onEarly(tr, ms, src, en); } }
-    for (var i = 0; i < PARALLEL; i++) {
+    var par = CONFIG.parallel || (CONFIG.geminiKey ? PARALLEL : 1);   // anahtarsız modda tek istek (ortak kota ve fatura için)
+    for (var i = 0; i < par; i++) {
       readAndTranslateFast(jpg, early).then(function (r) { if (!done) { done = true; resolve(r); } },
-        function (e) { fails++; if (fails >= PARALLEL && !done) { done = true; reject(e); } });
+        function (e) { fails++; if (fails >= par && !done) { done = true; reject(e); } });
     }
   });
 }
@@ -662,9 +695,10 @@ function hedgedTranslate(jpg) {
 // Bağlantıyı sıcak tut: boşta kalınca ücretsiz bir model bilgisi isteği.
 var lastGemini = 0;
 setInterval(function () {
-  if (!running || !CONFIG.geminiKey || Date.now() - lastGemini < 8000) return;
+  if (!running || !canTranslate() || Date.now() - lastGemini < 8000) return;
   lastGemini = Date.now();
-  httpsJson('GET', '/v1beta/models/' + MODEL).catch(function () {});
+  if (CONFIG.geminiKey) httpsJson('GET', '/v1beta/models/' + MODEL).catch(function () {});
+  else sharedReq('GET', '/').catch(function () {});   // anahtarsız: sunucu bağlantısını sıcak tut (kota harcamaz)
 }, 4000);
 
 // Kıyas: config.bench = ["model1", ...] ise açılışta örnek kareyle her modeli 3 kez dener.
@@ -850,7 +884,8 @@ async function captureWorker(delay) {
 
 async function loop() {
   if (running) return; running = true;
-  if (!CONFIG.geminiKey) { log('Gemini anahtarı yok (config.local.json)'); emit({ status: 'nokey' }); }
+  if (!CONFIG.geminiKey && !(await setupKeyless().catch(function () { return false; }))) { log('Gemini anahtarı yok ve anahtarsız mod kullanılamıyor'); emit({ status: 'nokey' }); }
+  else if (!CONFIG.geminiKey) emit({ status: 'keyless' });
   await initDecoder();
   if (CONFIG.bench && CONFIG.bench.length) { try { await bench(); } catch (e) { log('kıyas hatası: ' + e.message); } }
   if (CONFIG.netTest) {   // TV → Google gidiş-dönüş ve örnek çeviri süresi
@@ -975,7 +1010,7 @@ async function loop() {
             event({ tur: 'gösterildi', kaynak: 'parmak_izi', en: fpHit.en, tr: fpHit.tr, benzerlik: +fpHit.sim.toFixed(3), gecikme_ms: 0, yakalama_ms: fr.capMs });
           }
           else if (hit) { stats.cacheHits++; show(seq, sig, hit, null, sig.bbox); event({ tur: 'gösterildi', kaynak: 'aynı_görüntü', en: hit.en, tr: hit.tr, gecikme_ms: 0 }); }
-          else if (Date.now() > backoffUntil && CONFIG.geminiKey && inFlight < 3) {
+          else if (Date.now() > backoffUntil && canTranslate() && Date.now() > quotaUntil && inFlight < 3) {
             stats.calls++; inFlight++; lastGemini = Date.now();
             (function (seq, sig, jpg, tc, bbox) {
               var earlyTr = null, earlySrc = '', earlyEn = '';
@@ -1104,7 +1139,10 @@ service.register('setupInfo', function (m) {
     m.respond({ returnValue: true, url: ip ? 'http://' + ip + ':' + SETUP_PORT + '/?c=' + setupCode : '', hasKey: !!CONFIG.geminiKey, code: setupCode });
   });
 });
-service.register('forgetKey', function (m) { delete SETTINGS.geminiKey; delete CONFIG.geminiKey; saveSettings(); emit({ status: 'nokey' }); m.respond({ returnValue: true }); });
+service.register('forgetKey', function (m) {
+  delete SETTINGS.geminiKey; delete CONFIG.geminiKey; saveSettings(); m.respond({ returnValue: true });
+  setupKeyless().then(function (ok) { emit({ status: ok ? 'keyless' : 'nokey' }); }, function () { emit({ status: 'nokey' }); });
+});
 
 // --- Developer Mode süresini otomatik uzat ---
 // TV'deki oturum koduyla LG'nin resmî adresine sorulur; 30 günün altına düştüyse yenilenir (~41 güne döner).
@@ -1143,7 +1181,7 @@ service.register('start', function (message) {
   log('hafıza: ' + Object.keys(cacheByEn).length + ' cümle, ' + fpStore.length + ' parmak izi (' + (MEMORY_FILE || 'yazılamıyor') + ')');
   log('start çağrıldı (abone: ' + subscribers.length + ', anahtar: ' + (CONFIG.geminiKey ? 'var' : 'YOK') + ', node ' + process.version + ')');
   if (!keepAlive) service.activityManager.create('translateos-keepalive', function (a) { keepAlive = a; });
-  message.respond({ returnValue: true, status: 'started', model: MODEL, hasKey: !!CONFIG.geminiKey });
+  message.respond({ returnValue: true, status: 'started', model: MODEL, hasKey: !!CONFIG.geminiKey, keyless: !CONFIG.geminiKey });
   loop().catch(function (e) { log('döngü durdu: ' + e.message); running = false; });
 }, function (message) {
   // abonelik iptal: kimse dinlemiyorsa durdur
@@ -1167,7 +1205,7 @@ service.register('boxRect', function (m) {
   if (p.peek) peekAckAt = Date.now();
   m.respond({ returnValue: true });
 });
-service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, shared: Object.keys(sharedByEn).length, placement: placement, devmodeHours: devmodeHours }, stats)); });
+service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, shared: Object.keys(sharedByEn).length, mode: CONFIG.geminiKey ? 'own' : (keylessReady ? 'keyless' : 'none'), placement: placement, devmodeHours: devmodeHours }, stats)); });
 service.register('showInput', function (m) {
   // Uygulamadan çıkarken TV'nin kendi HDMI ekranına güvenli dönüş.
   var id = 'com.webos.app.hdmi' + ((m.payload && m.payload.port) || 1);

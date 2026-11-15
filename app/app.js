@@ -133,6 +133,7 @@
     luna('stats', SVC + 'stats', {}, function (r) {
       document.getElementById('m-mem').textContent = (r.memory || 0).toLocaleString('tr-TR') + ' cümle';
       document.getElementById('m-shared').textContent = (r.shared || 0).toLocaleString('tr-TR') + ' cümle';
+      if (r.mode) document.getElementById('m-mode').textContent = r.mode === 'own' ? 'Kendi Gemini anahtarın' : (r.mode === 'keyless' ? 'TranslateOS sunucusu' : 'Anahtar gerekiyor');
       if (r.placement) placement = r.placement;
       document.getElementById('m-place').textContent = placement === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine';
     });
@@ -188,7 +189,9 @@
       }
       if (r.status === 'pairing') status('TV\'de çıkan izni onaylayın', 0);
       if (r.status === 'ready') status('Altyazı çevirisi hazır', 3000);
-      if (r.status === 'nokey' || (r.status === 'started' && r.hasKey === false)) showSetup();
+      if (r.status === 'nokey' || (r.status === 'started' && r.hasKey === false && !r.keyless)) showSetup();
+      if (r.status === 'keyless') status('Çeviri hazır', 3000);
+      if (r.status === 'quota') status(r.scope === 'global' ? 'Bugünlük ortak çeviri kotası doldu. Mavi tuşla kendi ücretsiz Gemini anahtarını girebilirsin.' : 'Bu TV\'nin bugünlük çeviri kotası doldu. Mavi tuşla kendi ücretsiz Gemini anahtarını girebilirsin.', 10000);
       if (r.status === 'keySaved') { hideSetup(); status('Anahtar kaydedildi, çeviri başladı', 4000); }
       if (r.status === 'captureFailed') status('Bu TV ekran görüntüsü vermiyor; çeviri yapılamıyor. Lütfen GitHub\'da bildir.', 0);
       if (r.clear) hideSub();

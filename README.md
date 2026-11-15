@@ -44,6 +44,7 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe altyazılar biraz geriden ama sırayla, hiçbiri atlanmadan gelir.
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
+- 🌍 **Ortak hafıza.** Bir oyuncunun çevirdiği cümle herkese anında ve ücretsiz gelir; oyuncu arttıkça çeviri hızlanır, Gemini kullanımı azalır. Sunucuya resim gitmez, sadece İngilizce cümle ve Türkçesi; isim, e-posta ya da IP saklanmaz.
 - 📺 **Kumanda ile kontrol.** Kırmızı: Türkçeyi gizle/göster · Sarı: Türkçe İngilizcenin yerine / üstünde · Yeşil: menü · Mavi: anahtarı değiştir · Geri: çıkış.
 - 🔁 **Developer Mode süresi kendiliğinden uzar.**
 - 😴 **TV uyumaz.** Kumandaya dokunmasan da oyun sırasında ekran koruyucu devreye girmez; girerse ekran hemen geri açılır.
@@ -106,6 +107,8 @@ npx ares-install -d tv dist/release/*.ipk       # TV'ye kur (cihaz adı: tv)
 sh installer/build.sh                            # kurulum programı (Windows .exe + Mac .zip) → dist/installer/
 ```
 
+Ortak hafıza sunucusu `server/` klasöründe (Cloudflare Workers + D1). Kendi sunucunu kurmak için: `cp server/wrangler.example.toml server/wrangler.toml`, D1 veritabanı oluştur, `schema.sql`'i uygula, `wrangler deploy`. TV'yi kendi sunucuna yönlendirmek için `service/config.local.json` içine `"sharedServer": "https://..."` yaz.
+
 Geliştirme sırasında anahtar ve test ayarları `service/config.local.json` dosyasına yazılabilir (git dışı, yayın paketine girmez).
 
 ## Yol haritası
@@ -113,7 +116,8 @@ Geliştirme sırasında anahtar ve test ayarları `service/config.local.json` do
 - [x] Windows ve Mac için tek tıklık kurulum programı
 - [x] Developer Mode süresini kendiliğinden uzatma
 - [x] API anahtarını TV'de QR kodla girme
-- [ ] Ortak çeviri hafızası: bir kişinin çevirdiği cümle herkese anında ve ücretsiz gelsin
+- [x] Ortak çeviri hafızası: bir kişinin çevirdiği cümle herkese anında ve ücretsiz gelsin
+- [ ] Anahtarsız mod: Gemini anahtarı almadan, günlük sınırla kullanım
 - [ ] Gecikmeyi 1 saniyenin altına indirmek
 - [ ] Daha fazla TV modeli ve oyun testi
 
