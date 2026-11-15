@@ -930,7 +930,7 @@ setInterval(function () {
   memoryDirty = false;
   writeFileSafe(MEMORY_FILE, JSON.stringify(cacheByEn), function (e) { if (e) { memoryDirty = true; log('hafıza yazılamadı: ' + e.message); } });
 }, 5000);
-var reqSeq = 0, inFlight = 0, lastReqAt = 0, safetyRead = false, freshNext = false, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0, lastColorAt = 0, lastColor = null;
+var reqSeq = 0, inFlight = 0, lastReqAt = 0, safetyRead = false, freshNext = false, safetyGap = 1800, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0, lastColorAt = 0, lastColor = null;
 var shade = null, rebase = false, peekAckAt = 0;   // ekrandaki Türkçe kutunun yeri (kare oranı) — uygulama bildirir
 
 // Yakalama: iki istek üst üste (TV her biri için ~340 ms harcıyor); en son kare işlenir.
@@ -1036,6 +1036,7 @@ async function loop() {
     latestShownSeq = seq;
     if (out.tr) {
       var added = pushLine(out.tr, false, out.en);
+      safetyGap = added ? 1800 : Math.min(5000, safetyGap * 2);   // aynı cümleyi yine bulduysa kontrolü seyrekleştir (boşa istek olmasın)
       incompleteAt = (out.en && !endsSentence(out.en)) ? Date.now() : 0;
       if (added && lines.length > 1) event({ tur: 'çok_satır', satır: lines.length, en: out.en });
       shownSig = stale ? null : sig;
@@ -1110,7 +1111,7 @@ async function loop() {
           lastSentSig = null; freshNext = true; event({ tur: 'yarım_cümle_okuması' });
           if (peekSince) continue;
         }
-        if (boxOpen && inFlight === 0 && !peekSince && Date.now() - lastReqAt > 1800 && Date.now() > quotaUntil && sigDiff(sig, lastSentSig) <= CHANGED) {
+        if (boxOpen && inFlight === 0 && !peekSince && Date.now() - lastReqAt > safetyGap && Date.now() > quotaUntil && sigDiff(sig, lastSentSig) <= CHANGED) {
           // Kutunun altı karanlıkta okunamıyor: kutu bir an hafifçe açılır (göz atma), sonraki net kareyle okunur
           if (placement === 'cover') { peekSince = Date.now(); peekAckAt = 0; lastPeekAt = Date.now(); emit({ peek: true, soft: true }); freshNext = true; stats.safety = (stats.safety || 0) + 1; event({ tur: 'güvence_okuması' }); lastSentSig = null; continue; }
           lastSentSig = null; safetyRead = true;
