@@ -943,8 +943,16 @@ async function loop() {
     if (stale && !out.tr) return;                         // eski istekten boş sonuç: ekrandakine dokunma
     latestShownSeq = seq;
     if (out.tr) {
-      shown = out.tr; shownSig = stale ? null : sig; pendingSince = 0; minUntil = Date.now() + readTime(out.tr); lastShownAt = Date.now();
-      openBox({ en: out.en, tr: out.tr, bbox: bbox || sig.bbox });
+      // Önceki Türkçe ekranda okunamayacak kadar kısa kaldıysa (<1,5 sn) silinmez: yenisiyle alt alta gösterilir.
+      var text = out.tr, prevLast = shown ? shown.split('\n').pop() : '';
+      if (prevLast && prevLast !== out.tr && Date.now() - lastShownAt < 1500) {
+        text = prevLast + '\n' + out.tr;
+        log('önceki cümle okunamadan değişecekti, alt alta gösterildi');
+        event({ tur: 'iki_satır', sebep: 'hızlı değişim', en: out.en, tr: text });
+      }
+      lastShownAt = Date.now();
+      shown = text; shownSig = stale ? null : sig; pendingSince = 0; minUntil = Date.now() + readTime(text);
+      openBox({ en: out.en, tr: text, bbox: bbox || sig.bbox });
       if (stale) log('geç gelen çeviri gösterildi (sıradaki yolda)');
     }
     else if (shown && Date.now() < minUntil) { pendingSince = 0; emit({ peekEnd: true }); }

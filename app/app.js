@@ -49,7 +49,7 @@
       var coverPadX = 48 + W * 0.02, coverPadY = 18;
       var halfW = Math.max(Math.abs(b.x0 - 0.5), Math.abs(b.x1 - 0.5)) * W;
       subEl.style.bottom = Math.max(0, COVER_BOTTOM - 10) + 'px';
-      subEl.style.minWidth = (2 * halfW + 2 * coverPadX) + 'px';
+      subEl.style.minWidth = Math.min(1100, 2 * halfW + 2 * coverPadX) + 'px';   // mini haritaya binmesin
       subEl.style.minHeight = Math.max(0, (H - COVER_BOTTOM + 10) - b.y0 * H + coverPadY) + 'px';
     }
   }
@@ -173,7 +173,7 @@
     badgeEl.style.opacity = '1';
     clearTimeout(welcomeTimer);
     welcomeTimer = setTimeout(function () { badgeEl.style.opacity = '0'; }, 6000);
-    status('Menü: OK · Çıkış: Geri', 6000);
+    status('Menüyü açmak için OK · Çeviriden çıkmak için Geri', 7000);
   }
   welcome();
   var lastResume = 0;
@@ -220,9 +220,7 @@
         return;
       }
       if (r.status === 'pairing') status('TV\'de çıkan izin isteğini onayla', 0);
-      if (r.status === 'ready') status('Altyazı çevirisi hazır', 3000);
       if (r.status === 'nokey' || (r.status === 'started' && r.hasKey === false && !r.keyless)) showSetup();
-      if (r.status === 'keyless') status('Çeviri hazır', 3000);
       if (r.status === 'quota') status(r.scope === 'global' ? 'Bugünlük ortak çeviri kotası doldu. Mavi tuşla kendi ücretsiz Gemini anahtarını girebilirsin.' : 'Bu TV\'nin bugünlük çeviri kotası doldu. Mavi tuşla kendi ücretsiz Gemini anahtarını girebilirsin.', 10000);
       if (r.status === 'keySaved') { hideSetup(); status('Anahtar kaydedildi, çeviri başladı', 4000); }
       if (r.status === 'captureFailed') status('Bu TV ekran görüntüsü vermiyor; çeviri yapılamıyor. Lütfen GitHub\'da bildir.', 0);
