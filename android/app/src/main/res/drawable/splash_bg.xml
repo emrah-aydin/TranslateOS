@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Eski Android (11 ve öncesi) açılış: lacivert zemin, ortada logo -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_bg" />
+    <item android:width="140dp" android:height="140dp" android:gravity="center">
+        <bitmap android:src="@drawable/splash_logo" android:gravity="fill" android:filter="true" />
+    </item>
+</layer-list>
