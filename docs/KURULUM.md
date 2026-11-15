@@ -8,6 +8,7 @@ LG webOS TV'ye TranslateOS'u kurmak yaklaşık **10 dakika** sürer. Bir kez yap
 - Android telefon ya da bilgisayar (Windows / Mac). Sadece kurulum için, bir kez; sonra gerekmez.
 - Telefon gerekmez (sadece isteğe bağlı kendi Gemini anahtarını girmek için).
 - TV, bilgisayar ve telefon **aynı Wi-Fi** ağında olmalı.
+- Kurulum sırasında **TV açık** olmalı. Kapalı (bekleme modundaki) TV ağda görünmez, kurulum programı onu bulamaz.
 
 ---
 
@@ -92,7 +93,7 @@ Bitti. PS5'te altyazılı bir oyun aç; İngilizce altyazılar Türkçe olarak o
 
 - **QR kodu okutunca sayfa açılmıyor:** Telefon ve TV aynı Wi-Fi ağında olmalı. Misafir ağı ya da mobil veri çalışmaz.
 - **"Bu TV ekran görüntüsü vermiyor" yazıyor:** TV modelin henüz desteklenmiyor olabilir. Lütfen modelini ve webOS sürümünü (Ayarlar › Genel › Cihaz › TV Bilgisi) [GitHub'da bildir](https://github.com/emrah-aydin/TranslateOS/issues).
-- **Kurulum programı TV'yi bulamıyor:** TV ile bilgisayar aynı Wi-Fi ağında mı? TV'nin IP adresini Developer Mode uygulamasından okuyup sayfaya elle yaz. Mac'te yerel ağ iznini yanlışlıkla reddettiysen: **Sistem Ayarları › Gizlilik ve Güvenlik › Yerel Ağ** bölümünde **TranslateOS**'u aç, programı kapatıp yeniden aç.
+- **Kurulum programı TV'yi bulamıyor:** TV açık mı? Kapalı TV ağda görünmez. TV ile bilgisayar (ya da telefon) aynı Wi-Fi ağında mı? TV'nin IP adresini Developer Mode uygulamasından okuyup sayfaya elle yaz. Mac'te yerel ağ iznini yanlışlıkla reddettiysen: **Sistem Ayarları › Gizlilik ve Güvenlik › Yerel Ağ** bölümünde **TranslateOS**'u aç, programı kapatıp yeniden aç.
 - **"Kod yanlış" diyor:** Developer Mode uygulamasındaki Passphrase'i kontrol et. Key Server'ı kapatıp açınca kod değişebilir.
 - **Uygulama listeden kayboldu:** Developer Mode kapanmış olabilir. 2. adımı tekrarla, sonra kurulum programını yeniden çalıştır.
 - **Görüntü siyah kaldı:** Kumandadan giriş tuşuna (Input) basıp HDMI girişini yeniden seç.

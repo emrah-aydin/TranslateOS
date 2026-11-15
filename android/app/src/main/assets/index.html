@@ -81,6 +81,7 @@
   <section>
     <h2>Başlamadan önce</h2>
     <ul>
+      <li><b>TV açık olmalı.</b> Kapalı TV ağda bulunamaz.</li>
       <li>TV'de <b>Developer Mode</b> uygulamasında <b>Dev Mode Status</b> ve <b>Key Server</b> açık (ON) olmalı.</li>
       <li>Telefon ve TV <b>aynı Wi-Fi</b> ağında olmalı.</li>
     </ul>
@@ -149,7 +150,7 @@
     $('scanning').classList.remove('hidden'); $('rescan-row').classList.add('hidden');
     call('scan').then(function (d) {
       (d.tvs || []).forEach(function (t) { tvs[t.ip] = t; }); render();
-      if (!Object.keys(tvs).length && ++tries < 20 && !busy) { hint('Henüz TV bulunamadı, aranıyor… TV açık ve telefonla aynı Wi-Fi ağında olmalı. Bulunamazsa TV\'nin IP adresini aşağıya yazıp <b>Ekle</b>\'ye bas.'); return setTimeout(scan, 1500); }
+      if (!Object.keys(tvs).length && ++tries < 20 && !busy) { hint('Henüz TV bulunamadı, aranıyor… TV açık (bekleme modunda değil) ve telefonla aynı Wi-Fi ağında olmalı. Bulunamazsa TV\'nin IP adresini aşağıya yazıp <b>Ekle</b>\'ye bas.'); return setTimeout(scan, 1500); }
       if (Object.keys(tvs).length) hint('');
       $('scanning').classList.add('hidden'); $('rescan-row').classList.remove('hidden');
     });

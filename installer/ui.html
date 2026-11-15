@@ -87,10 +87,11 @@
   <section class="pre">
     <h2>Başlamadan önce</h2>
     <ul>
+      <li><b>TV açık olmalı.</b> Kapalı TV ağda bulunamaz.</li>
       <li>TV'de <b>Developer Mode</b> uygulamasında <b>Dev Mode Status</b> ve <b>Key Server</b> açık (ON) olmalı.</li>
       <li>Bilgisayar ve TV <b>aynı Wi-Fi</b> ağında olmalı.</li>
     </ul>
-    <p class="hint" style="margin:10px 0 0">Developer Mode'u hiç açmadıysan: <a href="https://github.com/emrah-aydin/TranslateOS/blob/main/docs/KURULUM.md" target="_blank" rel="noopener">resimli rehber</a></p>
+    <p class="hint" style="margin:10px 0 0">Developer Mode'u hiç açmadıysan: <a href="https://github.com/emrah-aydin/TranslateOS/blob/main/docs/KURULUM.md#2-tvde-developer-modeu-aç" target="_blank" rel="noopener">adım adım kurulum rehberi</a></p>
   </section>
 
   <section id="s-tv">
@@ -178,7 +179,7 @@
       var none = !Object.keys(tvs).length;
       if (none) {
         scanTries++;
-        hint('Henüz TV bulunamadı, aramaya devam ediliyor. TV açık ve bilgisayarla aynı Wi-Fi ağında olmalı.' + (PERM_HINT ? '<br><br>' + PERM_HINT : '') +
+        hint('Henüz TV bulunamadı, aramaya devam ediliyor. TV açık (bekleme modunda değil) ve bilgisayarla aynı Wi-Fi ağında olmalı.' + (PERM_HINT ? '<br><br>' + PERM_HINT : '') +
              '<br><br>Bulunamazsa TV\'nin IP adresini aşağıya yazıp <b>Ekle</b>\'ye bas.');
         if (scanTries < 40 && polling === null) { setTimeout(function () { scan(true); }, 2500); return; }
       } else hint('');
