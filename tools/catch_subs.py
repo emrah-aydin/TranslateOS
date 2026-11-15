@@ -7,6 +7,8 @@ from common import tv_host, client_key, out_dir
 OUT = out_dir("readme_caps")
 SECS = float(sys.argv[1]) if len(sys.argv) > 1 else 600
 MAX = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+GAP = float(sys.argv[3]) if len(sys.argv) > 3 else 12
+MINY = int(sys.argv[4]) if len(sys.argv) > 4 else 60
 def yellow(p):
     im = Image.open(p).convert("RGB"); w, h = im.size
     band = im.crop((int(w * .15), int(h * .55), int(w * .85), int(h * .95))).resize((280, 80))
@@ -23,7 +25,7 @@ async def main():
                 async with http.get(r["imageUri"], ssl=False) as resp: data = await resp.read()
                 p = os.path.join(OUT, "son.jpg"); open(p, "wb").write(data)
                 y = yellow(p)
-                if y > 60 and time.time() - last > 12:
+                if y > MINY and time.time() - last > GAP:
                     q = os.path.join(OUT, time.strftime("%H%M%S") + f"_{y}.jpg"); os.replace(p, q)
                     saved += 1; last = time.time(); print(time.strftime("%H:%M:%S"), "kaydedildi", q, y, flush=True)
             except Exception as ex:
