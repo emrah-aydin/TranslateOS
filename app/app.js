@@ -152,7 +152,20 @@
     if (lp.menu) setTimeout(function () { toggleMenu(true); }, 1500);
   } catch (e) {}
 
-  showHdmi(port);
+  // Giriş: başlatma parametresiyle verilmediyse, cihaz bağlı olan HDMI girişini servis seçer (en fazla 2,5 sn beklenir)
+  var portFixed = !!(lp && lp.hdmi);
+  function autoInput() {
+    if (portFixed) { showHdmi(port); return; }
+    var done = false;
+    var t = setTimeout(function () { if (!done) { done = true; showHdmi(port); } }, 2500);
+    luna('pick', SVC + 'pickInput', {}, function (r) {
+      if (done) { if (r && r.port && r.port !== port) { port = r.port; showHdmi(port); } return; }
+      done = true; clearTimeout(t);
+      if (r && r.port) port = r.port;
+      showHdmi(port);
+    });
+  }
+  autoInput();
   blockScreenSaver();
   // Açılış: sol üstte rozet + kısa tuş ipucu. TV uygulamayı arka planda bekletip yeniden öne getirdiğinde de gösterilir.
   var welcomeTimer = null;
@@ -168,7 +181,7 @@
     if (Date.now() - lastResume < 1500) return;   // öne gelme olayı iki kez gelebilir
     lastResume = Date.now();
     try { var p = typeof params === 'string' ? JSON.parse(params) : (params || {}); if (p.menu) setTimeout(function () { toggleMenu(true); }, 1000); } catch (e) {}
-    showHdmi(port);          // Geri ile çıkınca HDMI görüntüsü bırakılmıştı
+    autoInput();             // Geri ile çıkınca HDMI görüntüsü bırakılmıştı; bu arada başka girişe geçilmiş olabilir
     welcome();
     subscribe();             // Geri ile durdurulan çeviriyi hemen yeniden başlat
   }
@@ -252,6 +265,7 @@
     } else if (e.keyCode >= 49 && e.keyCode <= 52) {
       port = e.keyCode - 48;
       showHdmi(port);
+      luna('setinput', SVC + 'setInput', { port: port });   // seçim hatırlansın
       status('HDMI ' + port, 2000);
     }
   });

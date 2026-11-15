@@ -1224,6 +1224,26 @@ service.register('boxRect', function (m) {
   m.respond({ returnValue: true });
 });
 service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, shared: Object.keys(sharedByEn).length, mode: CONFIG.geminiKey ? 'own' : (keylessReady ? 'keyless' : 'none'), placement: placement, devmodeHours: devmodeHours }, stats)); });
+// --- HDMI girişi: cihaz bağlı olan girişi kendiliğinden seç ---
+// Öncelik: kullanıcının son seçtiği giriş (bağlıysa) > oyun konsolu adı taşıyan bağlı giriş > ilk bağlı giriş > HDMI 1
+var CONSOLE_RE = /ps5|ps4|playstation|xbox|switch|nintendo|steam|pc|oyun|game/i;
+service.register('pickInput', function (m) {
+  (async function () {
+    var s = await getSession();
+    var r = await s.request('ssap://tv/getExternalInputList', {});
+    var list = ((r && r.devices) || []).map(function (d) { var mm = /^HDMI_(\d)/.exec(d.id || ''); return mm ? { port: +mm[1], label: d.label || '', connected: !!d.connected } : null; })
+      .filter(Boolean);
+    var on = list.filter(function (d) { return d.connected; });
+    var pick = on.filter(function (d) { return d.port === SETTINGS.hdmi; })[0] || on.filter(function (d) { return CONSOLE_RE.test(d.label); })[0] || on[0];
+    log('HDMI girişleri: ' + list.map(function (d) { return d.port + (d.connected ? '+' : '-') + (d.label ? '(' + d.label + ')' : ''); }).join(' ') + ' → ' + (pick ? pick.port : 1));
+    return { returnValue: true, port: pick ? pick.port : 1, label: pick ? pick.label : '' };
+  })().then(function (o) { m.respond(o); }, function () { m.respond({ returnValue: true, port: SETTINGS.hdmi || 1 }); });
+});
+service.register('setInput', function (m) {
+  var p = Number(m.payload && m.payload.port);
+  if (p >= 1 && p <= 4) { SETTINGS.hdmi = p; saveSettings(); }
+  m.respond({ returnValue: true });
+});
 service.register('showInput', function (m) {
   // Uygulamadan çıkarken TV'nin kendi HDMI ekranına güvenli dönüş.
   var id = 'com.webos.app.hdmi' + ((m.payload && m.payload.port) || 1);
