@@ -26,20 +26,25 @@ LG webOS TV'ye TranslateOS'u kurmak yaklaşık **10 dakika** sürer. Bir kez yap
 
 > Developer Mode süreli çalışır. TranslateOS bu süreyi her açılışta kontrol eder ve azaldığında **kendiliğinden uzatır**. 
 
-## 3. Kurulum programını indir
+## 3. Kurulum programını aç
 
-[Son sürüm sayfasından](https://github.com/emrah-aydin/TranslateOS/releases/latest) bilgisayarına uygun dosyayı indir:
+**Mac (önerilen, uyarısız):** **Terminal** uygulamasını aç (Spotlight'ta "Terminal" yaz), şu satırı yapıştır ve Enter'a bas:
 
-| Bilgisayar | Dosya |
-|---|---|
-| Windows | `TranslateOS-Kurulum.exe` |
-| Mac (Apple Silicon ve Intel) | `TranslateOS-Kurulum-Mac.zip` |
+```bash
+curl -fsSL https://raw.githubusercontent.com/emrah-aydin/TranslateOS/main/install.sh | sh
+```
+
+Komut kurulum programını indirip kendisi açar; Mac "doğrulanamadı" uyarısı göstermez.
+
+**Windows:** [Son sürüm sayfasından](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS-Kurulum.exe` dosyasını indir.
+
+**Mac, Terminal'siz:** Aynı sayfadan `TranslateOS-Kurulum-Mac.zip` dosyasını da indirebilirsin (aşağıdaki Mac uyarısını geçmen gerekir).
 
 ## 4. Programı aç, kodu yaz
 
-1. İndirdiğin programı çift tıklayarak aç. Tarayıcında bir kurulum sayfası açılır.
+1. Programı aç (Terminal komutuyla açtıysan zaten açılmıştır). Tarayıcında bir kurulum sayfası açılır.
    - **Windows:** "Windows bilgisayarınızı korudu" uyarısı çıkarsa **Ek bilgi** › **Yine de çalıştır**'a bas.
-   - **Mac:** Zip'i aç, **TranslateOS Kurulum**'u çift tıkla. "Açılamıyor" uyarısı çıkarsa **Sistem Ayarları › Gizlilik ve Güvenlik**'e gir, en altta **Yine de Aç**'a bas. Ardından Mac "yerel ağdaki aygıtları bulmak istiyor" diye sorar: **İzin Ver**'e bas. Bu izin olmadan program TV'yi göremez.
+   - **Mac:** "yerel ağdaki aygıtları bulmak istiyor" diye sorarsa **İzin Ver**'e bas; bu izin olmadan program TV'yi göremez. Zip ile indirdiysen önce "doğrulanamadı" uyarısı çıkar: **Bitti**'ye bas, **Sistem Ayarları › Gizlilik ve Güvenlik**'e gir, en altta **Yine de Aç**'a bas.
 2. Sayfa ağdaki LG TV'ni kendisi bulur. Bulamazsa TV'nin IP adresini elle yaz.
 3. Developer Mode uygulamasındaki **Passphrase**'i (6 karakter) yaz, **TranslateOS'u kur**'a bas.
 4. Bir dakikadan kısa sürede kurulum biter ve TranslateOS TV'nde kendiliğinden açılır.

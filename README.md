@@ -89,7 +89,9 @@ Senin TV'n listede yoksa dene ve sonucu [issue olarak bildir](../../issues). Lis
 
 Kısaca:
 1. TV'de **Developer Mode**'u aç (ücretsiz LG geliştirici hesabıyla), **Key Server**'ı da aç.
-2. [Son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) **kurulum programını** indir: Windows için `TranslateOS-Kurulum.exe`, Mac için `TranslateOS-Kurulum-Mac.zip`.
+2. Kurulum programını aç:
+   - **Mac:** Terminal'e yapıştır: `curl -fsSL https://raw.githubusercontent.com/emrah-aydin/TranslateOS/main/install.sh | sh`
+   - **Windows:** [son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS-Kurulum.exe` dosyasını indir ve aç.
 3. Programı aç. TV'ni kendisi bulur; TV'deki 6 haneli kodu yaz, **Kur**'a bas. TranslateOS TV'de açılır.
 4. Ekrandaki **QR kodu telefonunla okut**, ücretsiz Gemini anahtarını yapıştır. İlk açılıştaki izni onayla, PS5'te oyunu aç.
 
