@@ -155,7 +155,7 @@
   showHdmi(port);
   blockScreenSaver();
   setTimeout(function () { badgeEl.style.opacity = '0'; }, 6000);
-  status('Menü için yeşil tuş', 4000);
+  status('Menü: OK · Çıkış: Geri', 6000);
 
   // --- Kurulum ekranı (QR) ---
   var setupEl = document.getElementById('setup');
