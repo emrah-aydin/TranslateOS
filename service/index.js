@@ -541,7 +541,8 @@ var PROMPT = 'This is the bottom strip of a video game frame. If it contains an 
   'profanity, slurs, insults and slang must be translated faithfully with equally strong natural Turkish street language. ' +
   'Keep names and places as they are. Make it sound like natural spoken Turkish game subtitles. ' +
   'Use correct standard Turkish spelling (TDK rules), e.g. "terk edilmiş", "her şey", "bir şey" are written separately. ' +
-  'A dialogue subtitle is a spoken sentence, not a single name. Ignore HUD, minimap, location or street names, mission titles, ' +
+  'A dialogue subtitle is a spoken sentence, not a single name. Short mission objectives shown in the same place (e.g. "Get a car.", ' +
+  '"Lose the Cops.", "Go to the bike rental store.") count as subtitles too and must be translated. Ignore HUD, minimap, location or street names, big mission titles, ' +
   'phone screens, signs, license plates and any Turkish text. Part of the subtitle may be faint because it sits behind a ' +
   'semi-transparent box; read it carefully. If the text is unreadable, garbled or not real English words, return empty strings ' +
   'instead of guessing. Reply only JSON with the English FIRST: {"en": "...", "tr": "..."}. If there is no English subtitle, reply {"en": "", "tr": ""}.';
@@ -788,7 +789,7 @@ async function bench() {
 // --- Ana döngü ---
 // Görüntü sürekli alınır. Altyazı bölgesi değişince hemen Gemini'ye gider (sonucu beklemeden yakalama sürer).
 // Daha yeni bir istek varken gelen eski sonuç gösterilmez. Gösterilen Türkçe, İngilizce kalkınca/değişince hemen kalkar.
-var sigCache = [];    // [{sig, out}] — benzer görüntü → aynı sonuç (API'ye tekrar gitmez)
+var sigCache = [];    // [{sig, out, at}] — benzer görüntü → aynı sonuç (API'ye tekrar gitmez). Boş sonuç en fazla 6 sn geçerli.
 var recent = [];      // [{sig, out, at}] son 6 sn'deki sonuçlar: aynı yerde, benzer şekildeki yazı = aynı cümle
 function iou(a, b) {
   if (!a || !b) return 0;
@@ -1108,7 +1109,11 @@ async function loop() {
           event({ tur: 'altyazı_görüldü', yakalama_ms: fr.capMs, kutu: boxOpen, yerlesim: placement });
           var seq = ++reqSeq, hit = null;
           if (underBox && !peekSince && Date.now() - lastPeekAt > 3000) underBoxReq[seq] = true;   // göz atmadan sonra tekrar döngüye girmesin
-          if (!safetyRead) for (var c = 0; c < sigCache.length; c++) if (sigDiff(sig, sigCache[c].sig) < SAME) { hit = sigCache[c].out; break; }
+          if (!safetyRead) for (var c = 0; c < sigCache.length; c++) {
+            var sc = sigCache[c];
+            if (!sc.out.tr && (boxOpen || Date.now() - (sc.at || 0) > 6000)) continue;   // 'altyazı yok' cevabı kısa süre geçerli: cümle kaybolmasın
+            if (sigDiff(sig, sc.sig) < SAME) { hit = sc.out; break; }
+          }
           if (safetyRead) { stats.safety = (stats.safety || 0) + 1; event({ tur: 'güvence_okuması' }); }
           // (Not: şekil benzerliğiyle 'aynı cümle' tahmini kısa satırlarda yanlış eşleştirdi; kaldırıldı. Doğruluk önce.)
           lastTiming = 'yakalama ' + fr.capMs + ' ms, çözme ' + (tSig - tDec) + ' ms, imza ' + (Date.now() - tSig) + ' ms';
@@ -1143,7 +1148,7 @@ async function loop() {
                   if (k2 && !underBoxReq[seq] && !out.rejected && sig.bbox) fpRemember(sig.bbox.fp, out.en || earlyEn);
                   if (k2 && cacheByEn[k2] && earlySrc === 'yeni' && cacheByEn[k2] !== earlyTr)
                     event({ tur: 'farklı_çeviri_bilgi', not: 'hafızada başka sürüm var; ekrandaki değiştirilmedi', ekranda: earlyTr, hafizada: cacheByEn[k2], en: out.en });
-                  sigCache.unshift({ sig: sig, out: { en: out.en || earlyEn, tr: earlyTr } }); if (sigCache.length > 300) sigCache.pop();
+                  sigCache.unshift({ sig: sig, out: { en: out.en || earlyEn, tr: earlyTr }, at: Date.now() }); if (sigCache.length > 300) sigCache.pop();
                   log('tamamlandı ' + (Date.now() - tc) + ' ms (' + earlySrc + '): ' + (out.en || earlyEn || '-'));
                   return;
                 }
@@ -1169,7 +1174,7 @@ async function loop() {
                 var known = k && memLookup(k); if (known) out.tr = known;   // aynı cümle hep aynı çeviri (kendi ya da ortak hafıza)
                 if (k) remember(out.en, out.tr);
                 if (k && !underBoxReq[seq] && !out.rejected && sig.bbox) fpRemember(sig.bbox.fp, out.en);
-                sigCache.unshift({ sig: sig, out: out }); if (sigCache.length > 300) sigCache.pop();   // boş sonuç da: aynı gürültü için tekrar sorma
+                sigCache.unshift({ sig: sig, out: out, at: Date.now() }); if (sigCache.length > 300) sigCache.pop();   // boş sonuç da: aynı gürültü için tekrar sorma
                 recent.push({ sig: sig, out: out, at: Date.now() });
                 show(seq, sig, out, Date.now() - tc, bbox);
               }).catch(function (e) {

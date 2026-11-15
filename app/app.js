@@ -49,7 +49,10 @@
       var coverPadX = 48 + W * 0.02, coverPadY = 18;
       var halfW = Math.max(Math.abs(b.x0 - 0.5), Math.abs(b.x1 - 0.5)) * W;
       subEl.style.bottom = Math.max(0, COVER_BOTTOM - 10) + 'px';
-      subEl.style.minWidth = Math.min(1100, 2 * halfW + 2 * coverPadX) + 'px';   // mini haritaya binmesin
+      // İngilizceyi tam örtecek kadar geniş; Türkçe metin ise 1100 px'te kırılır (mini haritaya gereksiz yere binmesin)
+      var coverW = 2 * halfW + 2 * coverPadX;
+      subEl.style.minWidth = coverW + 'px';
+      subEl.style.maxWidth = Math.max(1100, coverW) + 'px';
       subEl.style.minHeight = Math.max(0, (H - COVER_BOTTOM + 10) - b.y0 * H + coverPadY) + 'px';
     }
   }
@@ -213,7 +216,7 @@
     badgeEl.style.opacity = '1';
     clearTimeout(welcomeTimer);
     welcomeTimer = setTimeout(function () { badgeEl.style.opacity = '0'; }, 6000);
-    status('Menüyü açmak için OK', 7000);
+    status('Menüyü açmak için kumandadan OK tuşuna basın', 7000);
   }
   welcome();
   var lastResume = 0;
