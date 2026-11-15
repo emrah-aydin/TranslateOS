@@ -44,13 +44,13 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe altyazılar biraz geriden ama sırayla, hiçbiri atlanmadan gelir.
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
-- 📺 **Kumanda ile kontrol.** Kırmızı: altyazı aç/kapat · Sarı: Türkçe İngilizcenin yerine / üstünde · Yeşil: menü · Mavi: anahtarı değiştir · Geri: çıkış.
+- 📺 **Kumanda ile kontrol.** Kırmızı: Türkçeyi gizle/göster · Sarı: Türkçe İngilizcenin yerine / üstünde · Yeşil: menü · Mavi: anahtarı değiştir · Geri: çıkış.
 - 🔁 **Developer Mode süresi kendiliğinden uzar.**
 - 😴 **TV uyumaz.** Kumandaya dokunmasan da oyun sırasında ekran koruyucu devreye girmez; girerse ekran hemen geri açılır.
 
 ## TV menüsü
 
-Yeşil tuşla açılır, 10 saniyede kendiliğinden kapanır: altyazı durumu, Türkçenin yeri, çevrilen ve hafızadaki cümle sayısı, tuşlar ve kaldırma yolu.
+Yeşil tuşla açılır, 10 saniyede kendiliğinden kapanır: Türkçenin yeri, çevrilen ve hafızadaki cümle sayısı, tuşlar ve kaldırma yolu.
 
 ![TranslateOS TV menüsü](docs/screenshots/translateos-menu.jpg)
 

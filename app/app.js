@@ -136,7 +136,6 @@
       if (r.placement) placement = r.placement;
       document.getElementById('m-place').textContent = placement === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine';
     });
-    document.getElementById('m-sub').textContent = enabled ? 'Açık' : 'Kapalı';
   }
   function toggleMenu(show) {
     var open = show === undefined ? menuEl.style.display !== 'block' : show;
@@ -218,7 +217,7 @@
     if (e.keyCode === KEY.RED) {
       enabled = !enabled;
       if (!enabled) hideSub();
-      status(enabled ? 'Altyazı açık' : 'Altyazı kapalı', 2000);
+      status(enabled ? 'Türkçe altyazı gösteriliyor' : 'Türkçe altyazı gizlendi (Kırmızı: geri aç)', 2500);
       if (menuEl.style.display === 'block') refreshMenu();
       e.preventDefault();
     } else if (e.keyCode === KEY.YELLOW) {
