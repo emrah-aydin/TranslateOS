@@ -42,6 +42,28 @@ function safeEqual(a, b) {
 }
 const today = () => new Date().toISOString().slice(0, 10);
 const minConfirm = (env) => Number(env.MIN_CONFIRM || MIN_CONFIRM);
+const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// Herkese açık uyumluluk sayfası (TV menüsüyle aynı renkler)
+function compatPage(rows) {
+  const tr = rows.map((r) => {
+    const okAll = r.ok === r.tv, none = !r.ok;
+    const st = okAll ? '<span class="ok">✓ Çalışıyor</span>' : none ? '<span class="bad">✕ Ekran okunamıyor</span>' : `<span class="mid">${r.ok}/${r.tv} TV'de çalışıyor</span>`;
+    return `<tr><td>${esc(r.model)}</td><td>${esc(r.webos)}</td><td>${st}</td><td>${r.tv}</td><td>${r.cap ? (r.cap / 1000).toFixed(2) + ' sn' : '–'}</td><td>${r.tr ? (r.tr / 1000).toFixed(1) + ' sn' : '–'}</td></tr>`;
+  }).join('');
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TranslateOS · TV uyumluluk listesi</title><style>
+body{margin:0;background:#070b12;color:#e9f2fb;font:16px/1.5 -apple-system,Roboto,"Segoe UI",sans-serif}
+main{max-width:900px;margin:0 auto;padding:28px 16px}h1{margin:0 0 4px;font-size:28px}h1 b{color:#5ec8ff}p{color:#8fa3b8;margin:0 0 18px}
+.card{background:rgba(10,16,26,.92);border:1px solid rgba(94,200,255,.22);border-radius:16px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}th,td{padding:12px 14px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}
+th{color:#8fa3b8;font-weight:600;font-size:13px}tr:last-child td{border-bottom:0}.ok{color:#4cd08a}.bad{color:#ff6b6b}.mid{color:#f5c542}
+a{color:#5ec8ff}.empty{padding:24px;color:#8fa3b8}</style></head><body><main>
+<h1>Translate<b>OS</b> · TV uyumluluk listesi</h1>
+<p>Bu liste, TranslateOS'u kuran TV'lerin ilk açılışta gönderdiği anonim sonuçlardan kendiliğinden oluşur (model, webOS sürümü, ekran okuma). İsim, IP ya da görüntü toplanmaz.</p>
+<div class="card">${rows.length ? `<table><thead><tr><th>Model</th><th>webOS</th><th>Durum</th><th>TV sayısı</th><th>Ekran okuma</th><th>Çeviri</th></tr></thead><tbody>${tr}</tbody></table>` : '<div class="empty">Henüz rapor yok.</div>'}</div>
+<p style="margin-top:16px">Kendi TV'ni bildirmek için: <a href="https://github.com/emrah-aydin/TranslateOS/issues/new?template=tv-uyumluluk.yml">GitHub'da bildirim formu</a> · <a href="https://github.com/emrah-aydin/TranslateOS">TranslateOS</a></p>
+</main></body></html>`;
+}
 // Ortak şekil hafızası: onaylı cümlelerin yazı şekilleri → [k, w, h, b]. TV aynı altyazıyı Gemini'ye sormadan tanır.
 async function packFps(env, since) {
   const { results } = await env.DB.prepare(
@@ -171,6 +193,31 @@ export default {
         const b = await env.DB.prepare('SELECT COUNT(*) AS n FROM devices').first();
         const u = await env.DB.prepare('SELECT n FROM usage WHERE day = ?').bind(today()).first();
         return json({ lines: a.n, shared: a.c || 0, devices: b.n, translatedToday: u ? u.n : 0, keyless: !!env.GEMINI_KEY });
+      }
+
+      // --- Uyumluluk raporu: TV modeli / webOS sürümü / ekran okuma sonucu (anonim) ---
+      if (path === '/v1/compat' && req.method === 'POST') {
+        const b = await req.json().catch(() => ({}));
+        const { device, token } = b;
+        if (!device || !safeEqual(token, await hmac(env.SECRET, String(device)))) return json({ error: 'kimlik geçersiz' }, 401);
+        const clean = (v, n) => String(v == null ? '' : v).replace(/[^\w .+\-()\/]/g, '').slice(0, n);
+        const model = clean(b.model, 40), webos = clean(b.webos, 40), fw = clean(b.fw, 30), app = clean(b.app, 12);
+        if (!model) return json({ error: 'model gerekli' }, 400);
+        const ok = b.capture === true ? 1 : 0;
+        const capMs = Number.isFinite(b.captureMs) ? Math.max(0, Math.min(10000, Math.round(b.captureMs))) : null;
+        const trMs = Number.isFinite(b.translateMs) ? Math.max(0, Math.min(20000, Math.round(b.translateMs))) : null;
+        await env.DB.prepare('INSERT INTO compat (device, model, webos, fw, app, capture_ok, cap_ms, tr_ms, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ' +
+          'ON CONFLICT(device) DO UPDATE SET model = excluded.model, webos = excluded.webos, fw = excluded.fw, app = excluded.app, ' +
+          'capture_ok = excluded.capture_ok, cap_ms = COALESCE(excluded.cap_ms, compat.cap_ms), tr_ms = COALESCE(excluded.tr_ms, compat.tr_ms), updated = excluded.updated')
+          .bind(device, model, webos, fw, app, ok, capMs, trMs, Date.now()).run();
+        return json({ ok: true });
+      }
+      if ((path === '/v1/compat' || path === '/uyumluluk') && req.method === 'GET') {
+        const { results } = await env.DB.prepare(
+          'SELECT model, webos, COUNT(*) AS tv, SUM(capture_ok) AS ok, CAST(AVG(cap_ms) AS INTEGER) AS cap, CAST(AVG(tr_ms) AS INTEGER) AS tr, MAX(updated) AS last ' +
+          'FROM compat GROUP BY model, webos ORDER BY tv DESC, model').all();
+        if (path === '/v1/compat') return json({ models: results });
+        return new Response(compatPage(results), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
       }
 
       const gm = path.match(/^\/v1\/gemini\/([a-z0-9.\-]+):(streamGenerateContent|generateContent)$/);

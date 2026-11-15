@@ -960,6 +960,38 @@ async function sharedFlush() {
   if (r.status !== 429) sharedQueue = batch.concat(sharedQueue).slice(0, 500);   // olmadıysa sonra tekrar dene
 }
 setInterval(function () { if (running) sharedFlush().catch(function () {}); }, 30000);
+
+// --- Uyumluluk raporu (anonim): TV modeli, webOS sürümü, ekran okuma sonucu, süreler ---
+// Seri numarası, IP, görüntü ya da kişisel bilgi GÖNDERİLMEZ. Kapatmak için settings.json: { "share": false }
+var APP_VERSION = (function () { try { return require('./package.json').version; } catch (e) { return ''; } })();
+var compat = { capTimes: [], capSent: false, trSent: false, info: null };
+async function tvInfo() {
+  if (compat.info) return compat.info;
+  var info = { model: '', webos: '', fw: '' };
+  try { var s = await getSession(); var r = await s.request('ssap://system/getSystemInfo', {}); info.model = String((r && r.modelName) || '').split('.')[0]; } catch (e) {}
+  try { var o = JSON.parse(fs.readFileSync('/var/run/nyx/os_info.json', 'utf8')); info.webos = 'webOS ' + (o.webos_release || ''); info.fw = o.core_os_release || ''; } catch (e) {}
+  compat.info = info; return info;
+}
+async function sendCompat(fields) {
+  if (!sharedOn()) return;
+  try {
+    if (!(await sharedRegister())) return;
+    var info = await tvInfo(); if (!info.model) return;
+    var body = Object.assign({ device: SETTINGS.device, token: SETTINGS.deviceToken, model: info.model, webos: info.webos, fw: info.fw, app: APP_VERSION }, fields);
+    var r = await sharedReq('POST', '/v1/compat', body);
+    log('Uyumluluk raporu gönderildi (' + info.model + ', ' + info.webos + '): ' + (r.status === 200 ? 'tamam' : r.status));
+  } catch (e) {}
+}
+function compatCapture(ms) {
+  if (compat.capSent || !(ms > 0)) return;
+  compat.capTimes.push(ms);
+  if (compat.capTimes.length >= 20) {
+    compat.capSent = true;
+    var avg = compat.capTimes.reduce(function (a, b) { return a + b; }, 0) / compat.capTimes.length;
+    sendCompat({ capture: true, captureMs: Math.round(avg) });
+  }
+}
+function compatTranslate(ms) { if (compat.trSent || !(ms > 0)) return; compat.trSent = true; sendCompat({ capture: true, translateMs: Math.round(ms) }); }
 setInterval(function () { if (running && Date.now() - sharedLastSync > 30 * 60000) sharedSync().catch(function () {}); }, 60000);
 setInterval(function () {
   if (!memoryDirty || !MEMORY_FILE) return;
@@ -983,7 +1015,7 @@ async function captureWorker(delay) {
       capFails = 0;
     } catch (e) {
       stats.errors++; capFails++; log('yakalama hatası: ' + (e && e.message));
-      if (capFails === 6) { emit({ status: 'captureFailed' }); event({ tur: 'uyumsuz', sebep: String(e && e.message).slice(0, 120) }); }
+      if (capFails === 6) { emit({ status: 'captureFailed' }); if (!compat.capSent) { compat.capSent = true; sendCompat({ capture: false }); } event({ tur: 'uyumsuz', sebep: String(e && e.message).slice(0, 120) }); }
       await sleep(1000);
     }
   }
@@ -1085,6 +1117,7 @@ async function loop() {
     else if (shown && Date.now() < minUntil) { pendingSince = 0; emit({ peekEnd: true }); }
     else closeBox();
     if (out.rejected) log('REDDEDİLDİ (' + out.rejected + ')');
+    if (out.early && ms > 0 && out.src !== 'hafıza') compatTranslate(ms);
     if (out.early) { log('çeviri ' + ms + ' ms (' + (out.src === 'hafıza' ? 'HAFIZADAN' : 'YENİ') + ', Gemini ' + out.ms + ' ms; ' + lastTiming + '): ' + (out.en ? out.en + ' → ' : '') + out.tr); return; }
     log((ms != null ? 'çeviri ' + ms + ' ms (Gemini ' + out.ms + ' ms' + (out.reused ? '' : ', YENİ BAĞLANTI') + (out.hedged ? ', YEDEK İSTEK KAZANDI' : '') + '; ' + lastTiming + ')' : 'önbellek') + ': ' + (out.en || '(altyazı yok)'));
   }
@@ -1098,6 +1131,7 @@ async function loop() {
       loopStage = 'çözme';
       var tDec = Date.now();
       var img = await decodeJpeg(fr.buf);
+      compatCapture(fr.capMs);
       try { helpTick(img); } catch (e) { log('ipucu hatası: ' + e.message); }
       pruneLines();
       var tSig = Date.now();

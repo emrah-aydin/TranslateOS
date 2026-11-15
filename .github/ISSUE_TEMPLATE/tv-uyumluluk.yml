@@ -1,0 +1,40 @@
+name: TV uyumluluk bildirimi
+description: TranslateOS'u denediğin TV modelini ve sonucu bildir
+title: "[Uyumluluk] Model: "
+labels: ["uyumluluk"]
+body:
+  - type: input
+    id: model
+    attributes:
+      label: TV modeli
+      description: Ayarlar › Genel › Cihaz › TV Bilgisi (örn. 55QNED7EB3C)
+    validations:
+      required: true
+  - type: input
+    id: webos
+    attributes:
+      label: webOS sürümü
+      description: Aynı ekranda yazar (örn. webOS 26 / 11.2.0)
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Sonuç
+      options:
+        - Çalışıyor, Türkçe altyazı geliyor
+        - Kuruldu ama "Bu TV ekran görüntüsü vermiyor" yazıyor
+        - Kurulamadı
+        - Başka bir sorun var
+    validations:
+      required: true
+  - type: input
+    id: game
+    attributes:
+      label: Denediğin oyun ve cihaz
+      description: örn. GTA V, PS5
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notlar
+      description: Gecikme, hata mesajı ya da eklemek istediğin her şey

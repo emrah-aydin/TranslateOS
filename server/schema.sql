@@ -46,3 +46,11 @@ CREATE TABLE IF NOT EXISTS fps (
   PRIMARY KEY (k, w, h)
 );
 CREATE INDEX IF NOT EXISTS fps_created ON fps(created);
+
+-- Uyumluluk raporu (anonim): TV başına son sonuç
+CREATE TABLE IF NOT EXISTS compat (
+  device TEXT PRIMARY KEY,
+  model TEXT, webos TEXT, fw TEXT, app TEXT,
+  capture_ok INTEGER, cap_ms INTEGER, tr_ms INTEGER,
+  updated INTEGER
+);

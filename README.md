@@ -77,7 +77,9 @@ Teknik ayrıntılar, ölçümler ve araştırma notları: [docs/ARASTIRMA.md](do
 | Diğer LG webOS TV'ler | 23 / 24 / 25 | 🟡 Henüz denenmedi |
 | Eski LG webOS TV'ler | 4.x – 22 | 🟡 Henüz denenmedi |
 
-Senin TV'n listede yoksa dene ve sonucu [issue olarak bildir](../../issues). Liste senin bildirimlerinle büyüyecek.
+📋 **Canlı uyumluluk listesi:** [translateos.translate-os.workers.dev/uyumluluk](https://translateos.translate-os.workers.dev/uyumluluk). TranslateOS kurulan her TV, ilk açılışta modelini, webOS sürümünü ve ekran okumanın çalışıp çalışmadığını anonim olarak bildirir (seri numarası, IP ya da görüntü gönderilmez). Liste bu bildirimlerle kendiliğinden büyür.
+
+TV'ni kendin de [buradan bildirebilirsin](../../issues/new?template=tv-uyumluluk.yml).
 
 ## Kurulum
 
