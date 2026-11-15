@@ -1104,6 +1104,13 @@ async function loop() {
           // Kutu altındaki yeni İngilizce önce kutu tam koyuyken okunur (parlatılarak). Bu okuma başarısız olursa
           // kutu bir an %75 koyuluğa iner (göz atma) ve sonraki net kareyle tekrar okunur.
           var underBox = placement === 'cover' && boxOpen && shown && sigDiff(sig, shownSig) > CHANGED;
+          // Yeni İngilizce eski Türkçe kutunun ALTINDA belirdi: karanlıkta okumayı denemeden hemen göz at (kutu bir an
+          // saydamlaşır, sonraki net kareyle okunur). Karanlık okuma çoğu zaman boş döner ve kısa cümle kaybolurdu.
+          if (underBox && !safetyRead && Date.now() - lastPeekAt > 2500) {
+            peekSince = Date.now(); peekAckAt = 0; lastPeekAt = Date.now();
+            emit({ peek: true }); event({ tur: 'göz_atma', sebep: 'kutu altında yeni yazı' });
+            lastSentSig = null; continue;
+          }
           lastSentSig = sig; lastReqSig = sig; lastReqAt = Date.now();
           debugFrame(fr.buf, 'ISTEK', true);
           event({ tur: 'altyazı_görüldü', yakalama_ms: fr.capMs, kutu: boxOpen, yerlesim: placement });

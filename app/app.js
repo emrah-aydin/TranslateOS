@@ -57,7 +57,7 @@
     }
   }
   // Kutu koyuluğu: Türkçe varken %90; yeni İngilizceye "göz atarken" bir an %50 (servis net okuyabilsin).
-  var ALPHA_TEXT = 0.9, ALPHA_PEEK = 0.75, alpha = ALPHA_TEXT, hasText = false;   // göz atma: göze daha az belli olsun (alttaki İngilizce 4 kat parlatılarak okunur)
+  var ALPHA_TEXT = 0.9, ALPHA_PEEK = 0.6, alpha = ALPHA_TEXT, hasText = false;   // göz atma: göze daha az belli olsun (alttaki İngilizce 4 kat parlatılarak okunur)
   // Örtü rengi sahneden gelir (koyu ton); kenarlar aynı renkte yumuşak gölgeyle sahneye karışır.
   var bg = [0, 0, 0];
   function paint() {
