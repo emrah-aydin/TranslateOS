@@ -88,7 +88,7 @@ TV'ni kendin de [buradan bildirebilirsin](../../issues/new?template=tv-uyumluluk
 Kısaca:
 1. TV'de **Developer Mode**'u aç (ücretsiz LG geliştirici hesabıyla), **Key Server**'ı da aç.
 2. Kurulum programını aç:
-   - **Android telefon (bilgisayar gerekmez):** [son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS-Kurulum.apk` dosyasını telefona indir ve kur.
+   - **Android telefon (bilgisayar gerekmez):** [son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS.apk` dosyasını telefona indir ve kur.
    - **Mac:** Terminal'e yapıştır: `curl -fsSL https://raw.githubusercontent.com/emrah-aydin/TranslateOS/main/install.sh | sh`
    - **Windows:** [son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS-Kurulum.exe` dosyasını indir ve aç.
 3. Programı aç. TV'ni kendisi bulur; TV'deki 6 haneli kodu yaz, **Kur**'a bas. TranslateOS TV'de açılır.

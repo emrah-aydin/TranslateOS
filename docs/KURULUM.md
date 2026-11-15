@@ -31,7 +31,7 @@ LG webOS TV'ye TranslateOS'u kurmak yaklaşık **10 dakika** sürer. Bir kez yap
 
 **Android telefon (en kolayı, bilgisayar gerekmez):**
 
-1. [Son sürüm sayfasından](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS-Kurulum.apk` dosyasını telefonuna indir ve aç.
+1. [Son sürüm sayfasından](https://github.com/emrah-aydin/TranslateOS/releases/latest) `TranslateOS.apk` dosyasını telefonuna indir ve aç.
 2. Telefon "bilinmeyen kaynaktan yükleme" iznini sorarsa **İzin ver** de, kurulumu tamamla.
 3. **TranslateOS** uygulamasını aç. Aynı Wi-Fi'deki TV'ni kendisi bulur; Developer Mode ve Key Server'ın açık olup olmadığını gösterir.
 4. TV'deki 6 karakterli kodu yaz, **TranslateOS'u kur**'a bas. Kurulum bitince TranslateOS TV'de açılır.
