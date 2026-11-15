@@ -30,7 +30,7 @@
   // Kutu SABİT bir yerde durur: her zaman ekranın tam ortasında ve aynı yükseklikte (kaymasın).
   // Yalnızca genişliği/yüksekliği Türkçe metne göre değişir. GTA altyazısı hep ortada; iki satırlık İngilizcenin
   // üstü ~%88,8, alt kenarı ~%95,5 yükseklikte (ölçüm).
-  var ABOVE_BOTTOM = 134;   // px: altyazı bölgesinin (%87,8 = 948 px) hemen üstü; iki satırlık İngilizcenin de üstünde kalır
+  var ABOVE_BOTTOM = 100;   // px: tek satırlık İngilizcenin (üstü ~%92) hemen üstü. İki satırda kutu İngilizcenin üstüne çıkar.
   var COVER_BOTTOM = 36;    // px: İngilizcenin alt kenarının biraz altı; kutu yukarı doğru büyür
   function placeBox(bbox) {
     var padX = 26, padY = 12;
@@ -42,8 +42,8 @@
       // İngilizce daha yukarıdan başlıyorsa (3 satır gibi) kutu o cümle için yukarı çıkar, İngilizceye asla binmez.
       // İngilizcenin hemen üstü (10 px boşluk). Kutu açıkken servis İngilizce alanını sadece büyütür; böylece konuşma
       // boyunca kutu en yüksek konumda sabit kalır, satır sayısı değiştikçe zıplamaz.
-      // Sabit yükseklik: servisin altyazı bölgesinin (%86,5) hemen üstü. Kutu bölgeye taşmaz (servis kendi kutusunu yeni
-      // yazı sanmaz) ve konuşma boyunca zıplamaz. İngilizce daha yukarıdan başlarsa (3 satır) kutu onun üstüne çıkar.
+      // Tek satırlık İngilizcenin hemen üstü; İngilizce daha yukarıdan başlarsa (2 satır) kutu 10 px boşlukla onun üstüne
+      // çıkar. Servis kutu açıkken İngilizce alanını sadece büyüttüğü için konuşma boyunca kutu aşağı-yukarı zıplamaz.
       subEl.style.bottom = Math.max(ABOVE_BOTTOM, Math.round((1 - b.y0) * H + 10)) + 'px';
       subEl.style.maxWidth = '1100px';   // mini haritaya binmesin
       subEl.style.minWidth = '0px';
