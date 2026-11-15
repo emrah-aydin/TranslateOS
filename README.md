@@ -11,15 +11,11 @@ Bilgisayar, kamera, capture card ya da başka bir cihaz gerekmez. PS5 HDMI ile T
 ![GTA 5'te TranslateOS ile Türkçe altyazı: sarı Türkçe, İngilizcenin hemen üstünde; önceki cümle soluk](docs/screenshots/gta5-turkce-altyazi-sari.jpg)
 
 <p align="center">
-  <img src="docs/screenshots/gta5-turkce-altyazi-otoyol.jpg" width="49%" alt="GTA 5 Türkçe altyazı: otoyolda takip">
-  <img src="docs/screenshots/gta5-turkce-altyazi-kopru.jpg" width="49%" alt="GTA 5 Türkçe altyazı: köprüde konuşma">
-</p>
-<p align="center">
-  <img src="docs/screenshots/gta5-turkce-altyazi-sokak.jpg" width="49%" alt="GTA 5 Türkçe altyazı: sokakta görev">
-  <img src="docs/screenshots/gta5-turkce-altyazi-1.jpg" width="49%" alt="GTA 5 Türkçe altyazı: gece telefon görüşmesi">
+  <img src="docs/screenshots/translateos-menu.jpg" width="49%" alt="TranslateOS: Türkçe İngilizcenin üstünde, menü açık">
+  <img src="docs/screenshots/gta5-turkce-altyazi-altta.jpg" width="49%" alt="TranslateOS: Türkçe İngilizcenin yerine (altta), menü açık">
 </p>
 
-*Ekran görüntüleri doğrudan TV'den alınmıştır: PS5'te GTA V, LG QNED TV, TranslateOS açık. Üstteki görüntü yeni çeviri ekranı: sarı Türkçe İngilizcenin hemen üstünde, bir önceki cümle soluk olarak duruyor. Alttaki görüntüler önceki sürümden (Türkçe İngilizcenin yerine); bu düzen hâlâ Sarı tuşla seçilebiliyor.*
+*Ekran görüntüleri doğrudan TV'den alınmıştır: PS5'te GTA V, LG QNED TV, TranslateOS açık. Sarı Türkçe varsayılan olarak İngilizcenin hemen üstünde durur, bir önceki cümle soluk olarak kalır (üstte ve solda). İstersen Sarı tuşla Türkçeyi İngilizcenin yerine alabilirsin (sağda).*
 
 ### Canlı test sonucu
 
@@ -54,9 +50,8 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 
 ## TV menüsü
 
-OK (ya da Yeşil) tuşuyla açılır, 10 saniyede kendiliğinden kapanır: çevirinin yeri, tuşlar ve bağlantılar.
+OK (ya da Yeşil) tuşuyla açılır, 10 saniyede kendiliğinden kapanır: çevirinin yeri, tuşlar ve bağlantılar (yukarıdaki görsellerde sağ üstte).
 
-![TranslateOS TV menüsü](docs/screenshots/translateos-menu.jpg)
 
 ## GTA 5 ve GTA 6
 
