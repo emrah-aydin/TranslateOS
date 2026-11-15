@@ -491,7 +491,7 @@ function helpHide(why) {
   if (why) log('ipucu kaldırıldı (' + why + ')');
 }
 function helpTick(img) {
-  if (!running || help.busy || Date.now() - help.lastCheck < 800) return;
+  if (!running || help.busy || Date.now() - help.lastCheck < 250) return;   // her karede bak (gecikme az olsun)
   help.lastCheck = Date.now();
   var sh = help.visible ? help.shade : null;
   var box = regionBox(img, HELP_REGION), sig = signature(img, box, sh);
@@ -506,7 +506,15 @@ function helpTick(img) {
   var jpg = cropForGemini(img, full, sh), t0 = Date.now(), seenSig = sig, bb = b;
   var body = { contents: [{ parts: [{ inline_data: { mime_type: 'image/jpeg', data: Buffer.from(jpg).toString('base64') } }, { text: HELP_PROMPT }] }] };
   var tm = thinkingMode[MODEL] === undefined ? 'level' : thinkingMode[MODEL];
-  geminiRequest(body, tm, MODEL).then(function (res) {
+  // Aynı anda iki istek: önce dönen kullanılır (ipuçları seyrek; gecikme önemli)
+  var raced = new Promise(function (resolve, reject) {
+    var left = 2, done = false;
+    function ok(r) { if (r.status === 200 && !done) { done = true; resolve(r); } else if (--left === 0 && !done) resolve(r); }
+    function bad(e) { if (--left === 0 && !done) reject(e); }
+    geminiRequest(JSON.parse(JSON.stringify(body)), tm, MODEL).then(ok, bad);
+    geminiRequest(JSON.parse(JSON.stringify(body)), tm, MODEL).then(ok, bad);
+  });
+  raced.then(function (res) {
     if (res.status !== 200) { log('ipucu çevirisi alınamadı (' + res.status + ')'); return; }
     var j = JSON.parse(res.text), text = j.candidates && j.candidates[0] && j.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('');
     var o = {}; try { o = JSON.parse(text || '{}'); } catch (e) {} if (Array.isArray(o)) o = o[0] || {};   // model bazen [{...}] döndürüyor
