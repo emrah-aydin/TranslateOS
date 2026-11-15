@@ -79,6 +79,8 @@
     if (bbox) lastBbox = bbox;
     placeBox(lastBbox);
     subEl.textContent = tr;
+    var n = String(tr).split('\n').length;   // birden çok cümle: yazı biraz küçülsün, ekranı fazla kapatmasın
+    subEl.style.fontSize = n >= 3 ? '32px' : (n === 2 ? '36px' : '');
     hasText = true; setAlpha(ALPHA_TEXT);
     subEl.style.display = 'flex';
     reportRect();
@@ -211,7 +213,7 @@
     badgeEl.style.opacity = '1';
     clearTimeout(welcomeTimer);
     welcomeTimer = setTimeout(function () { badgeEl.style.opacity = '0'; }, 6000);
-    status('Menüyü açmak için OK · Çeviriden çıkmak için Geri', 7000);
+    status('Menüyü açmak için OK', 7000);
   }
   welcome();
   var lastResume = 0;

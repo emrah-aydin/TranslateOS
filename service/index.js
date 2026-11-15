@@ -976,7 +976,7 @@ async function loop() {
   function readTime(tr) { return Math.max(2500, Math.min(7000, 1800 + String(tr).length * 55)); }
   function union(a, b) { if (!a) return b; if (!b) return a; return { x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) }; }
   function openBox(msg) { boxOpen = true; if (msg.bbox) boxBbox = union(boxBbox, msg.bbox), msg.bbox = boxBbox; msg.placement = placement; emit(msg); }
-  function closeBox() { peekSince = 0; if (boxOpen) { event({ tur: 'kapandı', tr: shown }); boxOpen = false; shown = ''; shownSig = null; pendingSince = 0; boxBbox = null; emit({ clear: true }); } }
+  function closeBox() { peekSince = 0; if (boxOpen) { event({ tur: 'kapandı', tr: shown }); boxOpen = false; shown = ''; lines = []; shownSig = null; pendingSince = 0; boxBbox = null; emit({ clear: true }); } }
   // İngilizce, kutunun örttüğü alandan taştıysa (ör. ikinci satır geldi) kutuyu büyüt.
   function growBox(b) {
     if (!boxOpen || !b || !boxBbox) return;
@@ -985,35 +985,50 @@ async function loop() {
       boxBbox = union(boxBbox, b); emit({ bbox: boxBbox, placement: placement });
     }
   }
-  var latestShownSeq = 0, lastShownAt = 0;
+  var latestShownSeq = 0;
+  // Ekrandaki Türkçe satırlar: yeni cümle eskisini SİLMEZ, altına eklenir. En fazla 3 cümle; her biri okuma süresi kadar
+  // (uzunluğuna göre 2,5–7 sn) kalır, süresi dolan üstten düşer. Geç gelen eski cümle, en yeninin üstüne yerleşir.
+  var lines = [];   // { tr, until }
+  function linesText() { return lines.map(function (e) { return e.tr; }).join('\n'); }
+  function pushLine(tr, older) {
+    var now = Date.now();
+    lines = lines.filter(function (e) { return e.until > now; });
+    for (var i = 0; i < lines.length; i++) if (lines[i].tr === tr) { lines[i].until = Math.max(lines[i].until, now + 1500); return false; }
+    var e = { tr: tr, until: now + readTime(tr) };
+    if (older && lines.length) lines.splice(lines.length - 1, 0, e); else lines.push(e);
+    while (lines.length > 3) lines.shift();
+    return true;
+  }
+  function showLines(en, bbox) {
+    shown = linesText(); pendingSince = 0;
+    minUntil = Math.max.apply(null, lines.map(function (e) { return e.until; }).concat([Date.now() + 1500]));
+    openBox({ en: en, tr: shown, bbox: bbox });
+  }
+  // Süresi dolan üst satırları düşür (en yeni satır, İngilizce ekrandayken kalır)
+  function pruneLines() {
+    if (!boxOpen || lines.length < 2) return;
+    var now = Date.now(), keep = lines.filter(function (e) { return e.until > now; });
+    if (!keep.length) keep = [lines[lines.length - 1]];
+    if (keep.length < lines.length) { lines = keep; shown = linesText(); emit({ tr: shown, keep: true }); }
+  }
   function show(seq, sig, out, ms, bbox) {
-    // Hızlı konuşmada çeviri, ekranda bir sonraki cümle belirdikten sonra dönebilir. Böyle geç gelen çeviri ATILMAZ:
-    // gösterilir, sıradaki cümlenin çevirisi gelince onun yerini alır (altyazı ~1 sn geriden ama eksiksiz akar).
-    // Daha yeni bir cümlenin çevirisi önce gelmişse eski cümle de kaybolmaz: kısa süre üst satırda birlikte gösterilir.
+    // Hızlı konuşmada çeviriler sırasız dönebilir; hiçbir cümle atılmaz.
     if (seq < latestShownSeq) {
-      if (out.tr && shown && shown.indexOf(out.tr) < 0 && Date.now() - lastShownAt < 5000) {
-        var both = out.tr + '\n' + shown.split('\n').pop();
-        shown = both; pendingSince = 0; minUntil = Math.max(minUntil, Date.now() + readTime(both));
-        openBox({ en: out.en, tr: both, bbox: bbox || sig.bbox });
-        log('geç gelen önceki cümle üst satıra eklendi: ' + (out.en || '-'));
-        event({ tur: 'iki_satır', en: out.en, tr: out.tr });
-      } else log('atlandı (daha yenisi gösterildi): ' + (out.en || '-'));
+      if (out.tr && pushLine(out.tr, true)) {
+        showLines(out.en, bbox || sig.bbox);
+        log('geç gelen önceki cümle de eklendi: ' + (out.en || '-'));
+        event({ tur: 'çok_satır', sebep: 'geç gelen', en: out.en, tr: shown });
+      }
       return;
     }
     var stale = seq !== reqSeq;
     if (stale && !out.tr) return;                         // eski istekten boş sonuç: ekrandakine dokunma
     latestShownSeq = seq;
     if (out.tr) {
-      // Önceki Türkçe ekranda okunamayacak kadar kısa kaldıysa (<1,5 sn) silinmez: yenisiyle alt alta gösterilir.
-      var text = out.tr, prevLast = shown ? shown.split('\n').pop() : '';
-      if (prevLast && prevLast !== out.tr && Date.now() - lastShownAt < 1500) {
-        text = prevLast + '\n' + out.tr;
-        log('önceki cümle okunamadan değişecekti, alt alta gösterildi');
-        event({ tur: 'iki_satır', sebep: 'hızlı değişim', en: out.en, tr: text });
-      }
-      lastShownAt = Date.now();
-      shown = text; shownSig = stale ? null : sig; pendingSince = 0; minUntil = Date.now() + readTime(text);
-      openBox({ en: out.en, tr: text, bbox: bbox || sig.bbox });
+      var added = pushLine(out.tr, false);
+      if (added && lines.length > 1) event({ tur: 'çok_satır', satır: lines.length, en: out.en });
+      shownSig = stale ? null : sig;
+      showLines(out.en, bbox || sig.bbox);
       if (stale) log('geç gelen çeviri gösterildi (sıradaki yolda)');
     }
     else if (shown && Date.now() < minUntil) { pendingSince = 0; emit({ peekEnd: true }); }
@@ -1033,6 +1048,7 @@ async function loop() {
       var tDec = Date.now();
       var img = await decodeJpeg(fr.buf);
       try { helpTick(img); } catch (e) { log('ipucu hatası: ' + e.message); }
+      pruneLines();
       var tSig = Date.now();
       var box = regionBox(img, EN_REGION);
       var sh = shade;
