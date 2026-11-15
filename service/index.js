@@ -360,6 +360,7 @@ function signature(img, box, sh) {
       if (rowsAll[y] >= thr) { if (cb && y - cb.y1 <= 3) { cb.y1 = y; cb.sum += rowsAll[y]; } else { cb = { y0: y, y1: y, sum: rowsAll[y] }; bands.push(cb); } }
     }
     var main = null; bands.forEach(function (bd) { if (!main || bd.sum > main.sum) main = bd; });
+    if (!main) main = { y0: peakY, y1: peakY, sum: rowsAll[peakY] };   // gürültülü karede hiçbir satır eşiği geçmezse en yoğun satırı kullan
     var rb0 = main.y0, rb1 = main.y1, lineGap = Math.round(img.height * 0.03);
     // İkinci satır: yakında (satır arası kadar), en az 3 satır kalınlığında ve yeterince dolu bir şerit
     bands.forEach(function (bd) {
