@@ -47,6 +47,13 @@ done
 APP="$B/TranslateOS Kurulum.app"
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS"
 lipo -create "$B/mac-arm64" "$B/mac-x64" -output "$APP/Contents/MacOS/translateos-kurulum"
+# Uygulama ikonu
+mkdir -p "$APP/Contents/Resources" "$B/icon.iconset"
+for sz in 16 32 128 256 512; do
+  sips -z $sz $sz logo-1024.png --out "$B/icon.iconset/icon_${sz}x${sz}.png" >/dev/null
+  sips -z $((sz*2)) $((sz*2)) logo-1024.png --out "$B/icon.iconset/icon_${sz}x${sz}@2x.png" >/dev/null
+done
+iconutil -c icns "$B/icon.iconset" -o "$APP/Contents/Resources/icon.icns"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -55,6 +62,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>com.translateos.installer</string>
   <key>CFBundleExecutable</key><string>translateos-kurulum</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconFile</key><string>icon</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>LSUIElement</key><true/>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
@@ -62,7 +70,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 codesign --force --deep --sign - "$APP"
 rm -f "$OUT/TranslateOS-Kurulum-Mac.zip"
-ditto -c -k --keepParent "$APP" "$OUT/TranslateOS-Kurulum-Mac.zip"
+ditto -c -k --norsrc --noextattr --keepParent "$APP" "$OUT/TranslateOS-Kurulum-Mac.zip"
 
 # 4) Windows
 cp "$CACHE/win-x64/node.exe" "$OUT/TranslateOS-Kurulum.exe"

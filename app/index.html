@@ -30,23 +30,29 @@
     padding: 12px 20px; border-radius: 14px; background: rgba(8,12,20,.78);
     border: 1px solid rgba(120,200,255,.35); color: #fff; transition: opacity .6s;
   }
+  #badge .mark { width: 44px; height: 44px; margin: -4px -2px -4px -6px; }
   #badge .logo { font-weight: 800; font-size: 30px; letter-spacing: .5px; }
   #badge .logo b { color: #5ec8ff; }
   #badge .by { font-size: 20px; color: #9fb3c8; }
 
   /* Menü (Yeşil tuş): küçük ve sade */
   #menu {
-    position: absolute; right: 40px; top: 40px; width: 380px; display: none;
+    position: absolute; right: 40px; top: 40px; width: 420px; display: none;
     padding: 22px 26px; border-radius: 16px; color: #e9f2fb;
     background: rgba(10,16,26,.92); border: 1px solid rgba(94,200,255,.25);
     box-shadow: 0 12px 40px rgba(0,0,0,.5);
   }
-  #menu h1 { margin: 0 0 14px; font-size: 32px; font-weight: 800; }
+  #menu h1 { margin: 0 0 14px; font-size: 32px; font-weight: 800; display: flex; align-items: center; gap: 12px; }
+  #menu h1 .mark { width: 52px; height: 52px; margin-left: -4px; }
   #menu h1 b { color: #5ec8ff; }
   #menu .row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 20px; color: #9fb3c8; }
   #menu .row span:last-child { color: #fff; font-weight: 600; }
   #menu .keys { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.08); font-size: 17px; color: #9fb3c8; line-height: 1.7; }
-  #menu .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+  #menu .k { display: flex; align-items: center; gap: 10px; }
+  #menu .dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; flex: none; margin: 0 9px 0 9px; }
+  #menu .back { flex: none; width: 32px; font-size: 13px; font-weight: 700; color: #cfe0f0; border: 1px solid rgba(255,255,255,.3); border-radius: 5px; text-align: center; line-height: 20px; }
+  #menu .note { margin-top: 12px; font-size: 16px; line-height: 1.45; color: #8ea2b6; }
+  #menu .note b { color: #dbe7f3; }
   #menu .credit { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.08); }
   #menu .credit .name { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: .5px; }
   #menu .credit .ig { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 18px; color: #ff9ad5; }
@@ -58,7 +64,8 @@
     background: rgba(8,14,24,.95); border: 1px solid rgba(94,200,255,.35); box-shadow: 0 30px 80px rgba(0,0,0,.6);
   }
   #setup .row2 { display: flex; gap: 48px; align-items: center; }
-  #setup h1 { margin: 0 0 8px; font-size: 52px; } #setup h1 b { color: #5ec8ff; }
+  #setup h1 { margin: 0 0 8px; font-size: 52px; display: flex; align-items: center; gap: 18px; }
+  #setup h1 .mark { width: 84px; height: 84px; margin-left: -6px; } #setup h1 b { color: #5ec8ff; }
   #setup .lead { font-size: 26px; color: #a9bccf; margin: 0 0 28px; }
   #setup ol { margin: 0; padding-left: 30px; font-size: 26px; line-height: 1.7; color: #dbe7f3; }
   #setup .qr { background: #fff; padding: 18px; border-radius: 18px; flex: none; }
@@ -73,12 +80,13 @@
 <div id="status"></div>
 
 <div id="badge">
+  <img class="mark" src="img/logo-96.png" alt="">
   <div class="logo">Translate<b>OS</b></div>
   <div class="by">by Emrah AYDIN</div>
 </div>
 
 <div id="setup">
-  <h1>Translate<b>OS</b></h1>
+  <h1><img class="mark" src="img/logo-192.png" alt=""><span>Translate<b>OS</b></span></h1>
   <p class="lead">Çeviriyi başlatmak için ücretsiz bir Gemini anahtarı gerekiyor.</p>
   <div class="row2">
     <div class="qr" id="setup-qr"></div>
@@ -95,18 +103,19 @@
 </div>
 
 <div id="menu">
-  <h1>Translate<b>OS</b></h1>
+  <h1><img class="mark" src="img/logo-96.png" alt=""><span>Translate<b>OS</b></span></h1>
   <div class="row"><span>Altyazı</span><span id="m-sub">Açık</span></div>
-  <div class="row"><span>Türkçe</span><span id="m-place">İngilizcenin üstünde</span></div>
+  <div class="row"><span>Türkçe</span><span id="m-place">İngilizcenin yerine</span></div>
   <div class="row"><span>Çevrilen cümle</span><span id="m-calls">0</span></div>
   <div class="row"><span>Hafızadaki cümle</span><span id="m-mem">0</span></div>
-  <div class="row"><span>Developer Mode</span><span id="m-dev">—</span></div>
   <div class="keys">
-    <div><span class="dot" style="background:#e5484d"></span>Altyazıyı aç / kapat</div>
-    <div><span class="dot" style="background:#f5c542"></span>Türkçe üstte / yerine</div>
-    <div><span class="dot" style="background:#46a758"></span>Bu menü</div>
-    <div><span class="dot" style="background:#3e8bff"></span>Gemini anahtarını değiştir</div>
+    <div class="k"><span class="dot" style="background:#e5484d"></span><span>Altyazıyı aç / kapat</span></div>
+    <div class="k"><span class="dot" style="background:#f5c542"></span><span>Türkçe: İngilizcenin yerine / üstünde</span></div>
+    <div class="k"><span class="dot" style="background:#46a758"></span><span>Bu menü</span></div>
+    <div class="k"><span class="dot" style="background:#3e8bff"></span><span>Gemini anahtarını değiştir</span></div>
+    <div class="k"><span class="back">Geri</span><span>TranslateOS'u kapat, normal TV'ye dön</span></div>
   </div>
+  <div class="note">Kaldırmak için: ana ekranda TranslateOS'un üstüne gel, <b>OK</b>'a basılı tut, <b>Kaldır</b>'ı seç.</div>
   <div class="credit">
     <div class="name">Emrah AYDIN</div>
     <div class="ig">

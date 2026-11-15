@@ -24,7 +24,7 @@ LG webOS TV'ye TranslateOS'u kurmak yaklaşık **10 dakika** sürer. Bir kez yap
 4. Developer Mode'u tekrar aç, **Key Server**'ı **ON** yap.
 5. Ekranda yazan **IP adresini** ve **Passphrase**'i (6 karakter) bir kenara not et.
 
-> Developer Mode süreli çalışır. TranslateOS bu süreyi her açılışta kontrol eder ve azaldığında **kendiliğinden uzatır**. Kalan süre TranslateOS menüsünde (Yeşil tuş) görünür.
+> Developer Mode süreli çalışır. TranslateOS bu süreyi her açılışta kontrol eder ve azaldığında **kendiliğinden uzatır**. 
 
 ## 3. Kurulum programını indir
 
@@ -70,10 +70,10 @@ Bitti. PS5'te altyazılı bir oyun aç; İngilizce altyazılar Türkçe olarak o
 | Tuş | Ne yapar |
 |---|---|
 | 🔴 Kırmızı | Altyazıyı aç / kapat |
-| 🟡 Sarı | Türkçe İngilizcenin üstünde / İngilizcenin yerine |
+| 🟡 Sarı | Türkçe İngilizcenin yerine / üstünde |
 | 🟢 Yeşil | Menü |
 | 🔵 Mavi | Gemini anahtarını değiştir (QR ekranı) |
-| Geri | Çıkış |
+| Geri | TranslateOS'u kapat, normal TV'ye dön |
 
 ## Sorun giderme
 
@@ -87,3 +87,7 @@ Bitti. PS5'te altyazılı bir oyun aç; İngilizce altyazılar Türkçe olarak o
 ## Gelişmiş: kurulum programı olmadan
 
 Kurulum programını kullanmak istemezsen `.ipk` dosyasını [son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) indirip ücretsiz [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop/releases) ile de kurabilirsin: **Add Device** (TV'nin IP adresi ve Passphrase) › **Apps** › `.ipk` dosyasını sürükle.
+
+## Kaldırma
+
+TV'nin ana ekranında TranslateOS'un üstüne gel, **OK** tuşuna basılı tut ve **Kaldır**'ı seç. Bu yol TV menüsünde de yazar.

@@ -22,3 +22,4 @@ service/settings.json
 # Kurulum programı derleme çıktıları
 installer/build/
 installer/.cache/
+service/*.tmp

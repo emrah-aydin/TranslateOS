@@ -9,7 +9,7 @@
   var menuEl = document.getElementById('menu');
   var badgeEl = document.getElementById('badge');
   var bridges = {};
-  var enabled = true, port = 1, statusTimer = null, lastBbox = null, menuTimer = null, menuCloseTimer = null, placement = 'above';
+  var enabled = true, port = 1, statusTimer = null, lastBbox = null, menuTimer = null, menuCloseTimer = null, placement = 'cover';
 
   // Her çağrı için tek köprü tutulur (abonelikler çöp toplayıcıya gitmesin).
   function luna(name, uri, params, cb) {
@@ -133,10 +133,10 @@
     luna('stats', SVC + 'stats', {}, function (r) {
       document.getElementById('m-calls').textContent = r.calls || 0;
       document.getElementById('m-mem').textContent = r.memory || 0;
-      if (r.devmodeHours != null) document.getElementById('m-dev').textContent = Math.round(r.devmodeHours / 24) + ' gün (otomatik uzatılır)';
+      if (r.placement) placement = r.placement;
+      document.getElementById('m-place').textContent = placement === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine';
     });
     document.getElementById('m-sub').textContent = enabled ? 'Açık' : 'Kapalı';
-    document.getElementById('m-place').textContent = placement === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine';
   }
   function toggleMenu(show) {
     var open = show === undefined ? menuEl.style.display !== 'block' : show;
@@ -209,6 +209,7 @@
   // Bekçi: servis döngüsü durmuşsa yeniden başlat.
   setInterval(function () {
     luna('watch', SVC + 'stats', {}, function (r) {
+      if (r.placement) placement = r.placement;
       if (r.returnValue === false || r.running === false) subscribe();
     });
   }, 10000);

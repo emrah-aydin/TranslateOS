@@ -19,10 +19,18 @@ try { CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.jso
 var SETTINGS_FILE = path.join(__dirname, 'settings.json'), SETTINGS = {};
 try { SETTINGS = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch (e) {}
 if (SETTINGS.geminiKey) CONFIG.geminiKey = SETTINGS.geminiKey;
-function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(SETTINGS)); return true; } catch (e) { return false; } }
+// Dosyayı önce geçici adla yazıp yerine taşır: yarım kalmaz, eski dosyanın sahibi/izni engel olmaz.
+function writeFileSafe(file, data, cb) {
+  var tmp = file + '.tmp';
+  fs.writeFile(tmp, data, function (e) {
+    if (e) return cb && cb(e);
+    fs.rename(tmp, file, function (e2) { if (cb) cb(e2); });
+  });
+}
+function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE + '.tmp', JSON.stringify(SETTINGS)); fs.renameSync(SETTINGS_FILE + '.tmp', SETTINGS_FILE); return true; } catch (e) { return false; } }
 var MODEL = CONFIG.model || 'gemini-flash-lite-latest';  // TV'den ölçüm: 0,7–1,0 sn (kalıcı bağlantıyla)
 var KEY_FILE = '/tmp/translateos_app_client_key';
-var placement = CONFIG.placement || 'above';   // 'above': Türkçe İngilizcenin üstünde · 'cover': İngilizcenin yerine
+var placement = SETTINGS.placement || CONFIG.placement || 'cover';   // 'cover': Türkçe İngilizcenin yerine (varsayılan) · 'above': İngilizcenin üstünde
 
 // Altyazı bölgesi (kare oranı). Türkçe kutumuz bunun ÜSTÜNDE durur, bu yüzden bu bölgeye girmez.
 var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.865, y1: 1.0 };
@@ -100,7 +108,7 @@ function httpsGetBuffer(uri) {
 function ssapConnect(url) {
   return new Promise(function (resolve, reject) {
     var ws = new WebSocket(url, { rejectUnauthorized: false, handshakeTimeout: 8000 });
-    var pending = {}, n = 0, registered = false, signed = true;
+    var pending = {}, subs = {}, n = 0, registered = false, signed = true;
     var timer = setTimeout(function () { reject(new Error('eşleşme zaman aşımı')); try { ws.terminate(); } catch (e) {} }, 90000);
     function send(o) { ws.send(JSON.stringify(o)); }
     function register() {
@@ -136,6 +144,11 @@ function ssapConnect(url) {
                 send({ type: 'request', id: id, uri: uri, payload: payload || {} });
                 setTimeout(function () { if (pending[id]) { delete pending[id]; res2({ error: 'timeout' }); } }, 8000);
               });
+            },
+            // Abonelik: TV her değişiklikte aynı id ile yeni mesaj yollar
+            subscribe: function (uri, payload, cb) {
+              var id = 's' + (n++); subs[id] = cb;
+              send({ type: 'subscribe', id: id, uri: uri, payload: payload || {} });
             }
           });
         } else if (m.type === 'error' && signed) { signed = false; register(); }
@@ -144,8 +157,40 @@ function ssapConnect(url) {
         return;
       }
       if (pending[m.id]) { var f = pending[m.id]; delete pending[m.id]; f(m.type === 'error' ? { error: m.error } : m.payload); }
+      else if (subs[m.id]) { try { subs[m.id](m.type === 'error' ? { error: m.error } : (m.payload || {})); } catch (e) {} }
     });
   });
+}
+
+// --- TV ekran koruyucuya geçmesin ---
+// Kumandaya bir süre basılmayınca TV "Screen Saver" moduna geçip ekranı karartıyor (PS5 kolu sayılmıyor).
+// 1) TV sormadan önce "hayır" deriz, 2) yine de geçerse ekranı hemen geri açarız. Sadece çeviri çalışırken.
+var screenGuardTimer = null, lastScreenFix = 0;
+function screenOn(s, why) {
+  if (!running || Date.now() - lastScreenFix < 1500) return;
+  lastScreenFix = Date.now();
+  s.request('ssap://com.webos.service.tvpower/power/turnOnScreen', {}).then(function (r) {
+    log('Ekran koruyucu kapatıldı (' + why + '): ' + JSON.stringify(r).slice(0, 80));
+  });
+}
+function keepScreenOn(s) {
+  s.subscribe('ssap://com.webos.service.tvpower/power/registerScreenSaverRequest', { subscribe: true, clientName: 'com.translateos.app' }, function (r) {
+    if (r && r.timestamp && running) {
+      s.request('ssap://com.webos.service.tvpower/power/responseScreenSaverRequest', { clientName: 'com.translateos.app', ack: false, timestamp: r.timestamp })
+        .then(function (a) { log('Ekran koruyucu isteği reddedildi: ' + JSON.stringify(a).slice(0, 80)); });
+    }
+  });
+  s.subscribe('ssap://com.webos.service.tvpower/power/getPowerState', { subscribe: true }, function (r) {
+    if (r && r.state === 'Screen Saver') screenOn(s, 'bildirim');
+  });
+  // Yedek: bildirim gelmezse diye 5 sn'de bir kontrol
+  clearInterval(screenGuardTimer);
+  screenGuardTimer = setInterval(function () {
+    if (!running || session !== s) return;
+    s.request('ssap://com.webos.service.tvpower/power/getPowerState', {}).then(function (r) {
+      if (r && r.state === 'Screen Saver') screenOn(s, 'kontrol');
+    });
+  }, 5000);
 }
 
 var session = null;
@@ -156,7 +201,7 @@ async function getSession() {
   ['wired', 'wifi'].forEach(function (k) { if (net && net[k] && net[k].ipAddress) ips.push(net[k].ipAddress); });
   if (!ips.length) throw new Error('TV ağ adresi bulunamadı');
   for (var i = 0; i < ips.length; i++) {
-    try { session = await ssapConnect('wss://' + ips[i] + ':3001'); log('Ekran erişimi hazır'); emit({ status: 'ready' }); return session; }
+    try { session = await ssapConnect('wss://' + ips[i] + ':3001'); log('Ekran erişimi hazır'); emit({ status: 'ready' }); keepScreenOn(session); return session; }
     catch (e) { log('SSAP ' + ips[i] + ': ' + e.message); }
   }
   throw new Error('Ekran erişimi kurulamadı');
@@ -698,7 +743,7 @@ function fpRemember(fp, en) {
 }
 setInterval(function () {
   if (!fpDirty || !FP_FILE) return; fpDirty = false;
-  fs.writeFile(FP_FILE, JSON.stringify(fpStore.map(function (e) { return { w: e.w, h: e.h, b: packBits(e.bits), en: e.en }; })), function () {});
+  writeFileSafe(FP_FILE, JSON.stringify(fpStore.map(function (e) { return { w: e.w, h: e.h, b: packBits(e.bits), en: e.en }; })), function (e) { if (e) log('parmak izi yazılamadı: ' + e.message); });
 }, 7000);
 
 var memoryDirty = false;
@@ -710,7 +755,7 @@ function remember(en, tr) {
 setInterval(function () {
   if (!memoryDirty || !MEMORY_FILE) return;
   memoryDirty = false;
-  fs.writeFile(MEMORY_FILE, JSON.stringify(cacheByEn), function (e) { if (e) log('hafıza yazılamadı: ' + e.message); });
+  writeFileSafe(MEMORY_FILE, JSON.stringify(cacheByEn), function (e) { if (e) { memoryDirty = true; log('hafıza yazılamadı: ' + e.message); } });
 }, 5000);
 var reqSeq = 0, inFlight = 0, lastTiming = '', retried = {}, underBoxReq = {}, lastPeekAt = 0, lastColorAt = 0, lastColor = null;
 var shade = null, rebase = false, peekAckAt = 0;   // ekrandaki Türkçe kutunun yeri (kare oranı) — uygulama bildirir
@@ -934,10 +979,10 @@ async function loop() {
 var SETUP_PORT = 8891, setupCode = String(Math.floor(100000 + Math.random() * 900000)), setupServer = null;
 var SETUP_HTML = function (msg) { return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
   '<title>TranslateOS kurulum</title><style>body{font-family:-apple-system,sans-serif;background:#0b1220;color:#e9f2fb;margin:0;padding:24px;max-width:520px}' +
-  'h1{font-size:26px}h1 b{color:#5ec8ff}p,li{color:#a9bccf;line-height:1.5}input{width:100%;box-sizing:border-box;font-size:17px;padding:14px;border-radius:10px;border:1px solid #2b3d55;background:#111a2b;color:#fff}' +
+  'h1{font-size:26px;display:flex;align-items:center;gap:12px}h1 img{width:52px;height:52px}h1 b{color:#5ec8ff}p,li{color:#a9bccf;line-height:1.5}input{width:100%;box-sizing:border-box;font-size:17px;padding:14px;border-radius:10px;border:1px solid #2b3d55;background:#111a2b;color:#fff}' +
   'button{margin-top:14px;width:100%;font-size:18px;padding:14px;border:0;border-radius:10px;background:#5ec8ff;color:#06121f;font-weight:700}' +
   '.ok{background:#12351f;color:#7ef0a8;padding:12px;border-radius:10px}.err{background:#3a1515;color:#ff9a9a;padding:12px;border-radius:10px}a{color:#5ec8ff}</style></head><body>' +
-  '<h1>Translate<b>OS</b> kurulum</h1>' + (msg || '') +
+  '<h1><img src="/logo.png" alt=""><span>Translate<b>OS</b> kurulum</span></h1>' + (msg || '') +
   '<ol><li><a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> adresinde Google hesabınla giriş yap.</li>' +
   '<li><b>Create API key</b> ile ücretsiz anahtar oluştur ve kopyala.</li><li>Aşağıya yapıştır ve kaydet.</li></ol>' +
   '<form method="POST" action="/key"><input type="hidden" name="code" value="' + setupCode + '"><input name="key" placeholder="Gemini API anahtarı" autocomplete="off" autocapitalize="off" spellcheck="false" required>' +
@@ -947,6 +992,13 @@ function startSetupServer() {
   setupServer = require('http').createServer(function (req, res) {
     var url = require('url').parse(req.url, true);
     function send(code, html) { res.writeHead(code, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(html); }
+    if (req.method === 'GET' && url.pathname === '/logo.png') {
+      // Logo uygulama klasöründen okunur (servis ve uygulama aynı paketle kurulur)
+      return fs.readFile(path.join(__dirname, '..', '..', 'applications', 'com.translateos.app', 'img', 'logo-96.png'), function (e, b) {
+        if (e) { res.writeHead(404); return res.end(); }
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=86400' }); res.end(b);
+      });
+    }
     if (req.method === 'GET' && url.pathname === '/') {
       if (url.query.c !== setupCode) return send(403, SETUP_HTML('<p class="err">Kod geçersiz. TV ekranındaki QR kodu tekrar okut.</p>'));
       return send(200, SETUP_HTML(''));
@@ -1036,7 +1088,7 @@ service.register('start', function (message) {
 service.register('stop', function (m) { running = false; m.respond({ returnValue: true }); });
 service.register('setPlacement', function (m) {
   var p = m.payload && m.payload.placement;
-  if (p === 'above' || p === 'cover') { placement = p; log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
+  if (p === 'above' || p === 'cover') { placement = p; SETTINGS.placement = p; saveSettings(); log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
   m.respond({ returnValue: true, placement: placement });
 });
 service.register('boxRect', function (m) {
