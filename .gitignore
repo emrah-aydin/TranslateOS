@@ -29,3 +29,11 @@ server/wrangler.toml
 server/.wrangler/
 server/.dev.vars
 service/shared.json
+
+# Android kurulum uygulaması: yerel ayar, imza, derleme çıktıları
+android/local.properties
+android/keystore.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/app.ipk

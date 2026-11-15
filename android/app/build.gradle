@@ -1,0 +1,39 @@
+plugins { id 'com.android.application' }
+
+// İmza bilgileri git dışında: android/keystore.properties (yoksa debug imzasıyla derlenir)
+def ksFile = rootProject.file('keystore.properties')
+def ks = new Properties()
+if (ksFile.exists()) ks.load(new FileInputStream(ksFile))
+
+android {
+    namespace 'com.translateos.installer'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.translateos.installer'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+    signingConfigs {
+        release {
+            if (ksFile.exists()) {
+                storeFile rootProject.file(ks['storeFile'])
+                storePassword ks['storePassword']
+                keyAlias ks['keyAlias']
+                keyPassword ks['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig ksFile.exists() ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+dependencies {
+    implementation 'com.github.mwiede:jsch:0.2.21'   // SSH (TV'ye kurulum)
+}
