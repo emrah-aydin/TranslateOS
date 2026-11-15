@@ -183,7 +183,7 @@
         resubTimer = setTimeout(subscribe, 1000);
         return;
       }
-      if (r.status === 'pairing') status('TV\'de çıkan izni onaylayın', 0);
+      if (r.status === 'pairing') status('TV\'de çıkan izin isteğini onayla', 0);
       if (r.status === 'ready') status('Altyazı çevirisi hazır', 3000);
       if (r.status === 'nokey' || (r.status === 'started' && r.hasKey === false && !r.keyless)) showSetup();
       if (r.status === 'keyless') status('Çeviri hazır', 3000);
