@@ -307,6 +307,7 @@ function startUi() {
       return probe(ip).then((p) => json(Object.assign({ ip, name: 'LG TV' }, p)));
     }
     if (route === 'GET /status') return json(job || { state: 'idle' });
+    if (route === 'POST /quit') { json({ ok: true }); setTimeout(() => process.exit(0), 300); return; }
     if (route === 'POST /install') {
       if (job && job.state === 'run') return json({ error: 'Kurulum zaten sürüyor' }, 409);
       let body = '';
@@ -316,7 +317,7 @@ function startUi() {
         job = { state: 'run', steps: STEPS.map((s) => ({ id: s.id, label: s.label, state: 'wait' })) };
         const report = (id, state, note) => { const s = job.steps.find((x) => x.id === id); s.state = state; if (note) s.note = note; };
         runInstall(p.ip, p.code, report)
-          .then(() => { job.state = 'ok'; })
+          .then(() => { job.state = 'ok'; setTimeout(() => process.exit(0), 8000); })   // iş bitti: sayfa son durumu alsın, sonra kapan
           .catch((e) => {
             job.state = 'error'; job.error = friendlyError(e, p.ip);
             job.steps.forEach((s) => { if (s.state === 'run') s.state = 'error'; });
@@ -342,7 +343,7 @@ function startUi() {
   // Sayfa kapandıktan bir süre sonra program kendiliğinden kapanır.
   setInterval(() => {
     const idle = Date.now() - lastSeen;
-    if ((job && job.state === 'run') || idle < (pageOpened ? 120000 : 900000)) return;
+    if ((job && job.state === 'run') || idle < (pageOpened ? 60000 : 900000)) return;
     process.exit(0);
   }, 10000).unref();
 }

@@ -124,9 +124,12 @@
       <h3>Kurulum tamam 🎉</h3>
       <p>TranslateOS TV'nde açıldı. Ekrandaki <b>QR kodu telefonunla okut</b> ve ücretsiz Gemini anahtarını gir.</p>
       <p>İlk açılışta TV izin isterse <b>İzin ver</b>'e bas.</p>
-      <p style="color:var(--muted);margin-top:10px">Bu pencereyi kapatabilirsin. Bilgisayara bir daha gerek yok.</p>
+      <p style="color:var(--muted);margin-top:10px">Kurulum programı birkaç saniye içinde kendiliğinden kapanacak. Bu sekmeyi kapatabilirsin; bilgisayara bir daha gerek yok.</p>
     </div>
   </section>
+
+  <div class="row" style="justify-content:center;margin-top:20px"><button class="sec" id="quit" type="button">Kurulum programını kapat</button></div>
+  <div class="msg good hidden" id="closed" style="text-align:center">Kurulum programı kapandı. Bu sekmeyi kapatabilirsin.</div>
 
   <footer>TranslateOS · Emrah AYDIN · <a href="https://github.com/emrah-aydin/TranslateOS" target="_blank" rel="noopener">GitHub</a></footer>
 </main>
@@ -225,6 +228,7 @@
             if (j.state !== 'run') {
               clearInterval(polling); polling = null;
               $('go').textContent = j.state === 'ok' ? 'Kuruldu ✓' : 'Tekrar dene';
+              if (j.state === 'ok') setTimeout(closedView, 9000);
               $('go').disabled = j.state === 'ok'; if (j.state !== 'ok') update();
             }
           });
@@ -233,7 +237,9 @@
   };
 
   // Sayfa açık kaldıkça programa haber ver (kapanınca program kendiliğinden çıkar)
-  setInterval(function () { fetch(BASE + 'status').catch(function () {}); }, 30000);
+  var beat = setInterval(function () { fetch(BASE + 'status').catch(function () {}); }, 15000);
+  function closedView() { clearInterval(beat); $('quit').parentNode.classList.add('hidden'); $('closed').classList.remove('hidden'); $('go').disabled = true; }
+  $('quit').onclick = function () { fetch(BASE + 'quit', { method: 'POST' }).catch(function () {}).then(closedView); };
   scan();
 })();
 </script>

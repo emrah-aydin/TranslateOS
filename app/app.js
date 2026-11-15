@@ -154,8 +154,30 @@
 
   showHdmi(port);
   blockScreenSaver();
-  setTimeout(function () { badgeEl.style.opacity = '0'; }, 6000);
-  status('Menü: OK · Çıkış: Geri', 6000);
+  // Açılış: sol üstte rozet + kısa tuş ipucu. TV uygulamayı arka planda bekletip yeniden öne getirdiğinde de gösterilir.
+  var welcomeTimer = null;
+  function welcome() {
+    badgeEl.style.opacity = '1';
+    clearTimeout(welcomeTimer);
+    welcomeTimer = setTimeout(function () { badgeEl.style.opacity = '0'; }, 6000);
+    status('Menü: OK · Çıkış: Geri', 6000);
+  }
+  welcome();
+  var lastResume = 0;
+  function resumed(params) {
+    if (Date.now() - lastResume < 1500) return;   // öne gelme olayı iki kez gelebilir
+    lastResume = Date.now();
+    try { var p = typeof params === 'string' ? JSON.parse(params) : (params || {}); if (p.menu) setTimeout(function () { toggleMenu(true); }, 1000); } catch (e) {}
+    showHdmi(port);          // Geri ile çıkınca HDMI görüntüsü bırakılmıştı
+    welcome();
+    subscribe();             // Geri ile durdurulan çeviriyi hemen yeniden başlat
+  }
+  document.addEventListener('webOSRelaunch', function (ev) { resumed(ev && ev.detail); });
+  var wasHidden = false;
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { wasHidden = true; return; }
+    if (wasHidden) { wasHidden = false; resumed(); }
+  });
 
   // --- Kurulum ekranı (QR) ---
   var setupEl = document.getElementById('setup');
@@ -177,6 +199,7 @@
   var resubTimer = null;
   function subscribe() {
     clearTimeout(resubTimer);
+    if (bridges.start) { try { bridges.start.cancel(); } catch (e) {} }   // eski aboneliği kapat (çift bağlantı olmasın)
     luna('start', SVC + 'start', { subscribe: true }, function (r) {
       if (r.returnValue === false) {
         status('Servis yeniden bağlanıyor…', 3000);

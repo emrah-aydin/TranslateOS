@@ -1073,7 +1073,7 @@ async function loop() {
       }
     } catch (e) {
       stats.errors++;
-      log('hata: ' + (e && e.message));
+      log('hata: ' + (e && e.message) + ' @ ' + String(e && e.stack || '').split('\n').slice(1, 4).map(function (l) { return l.trim().replace(/^at /, '').replace(/\(.*\/([^/]+:\d+):\d+\)/, '($1)'); }).join(' < '));
       await sleep(500);
     }
   }
