@@ -51,7 +51,7 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 
 ## TV menüsü
 
-Yeşil tuşla açılır, 10 saniyede kendiliğinden kapanır: Türkçenin yeri, çevrilen ve hafızadaki cümle sayısı, tuşlar ve kaldırma yolu.
+Yeşil tuşla açılır, 10 saniyede kendiliğinden kapanır: Türkçenin yeri ve tuşlar.
 
 ![TranslateOS TV menüsü](docs/screenshots/translateos-menu.jpg)
 
