@@ -1200,10 +1200,12 @@ async function loop() {
                   event({ tur: 'göz_atma', sebep: 'kutu altından okunamadı' });
                   return;
                 }
-                if (!out.en && !retried[seq] && looksLikeSubtitle(sig) && sig.density > 0.005) {
-                  // Ekranda belirgin altyazı var ama model "yok" dedi: bir sonraki kareyle bir kez daha sor.
+                if (!out.en && !retried[seq] && (looksLikeSubtitle(sig) && sig.density > 0.005 || (boxOpen && placement === 'cover'))) {
+                  // Ekranda altyazı var (ya da Türkçe kutu üstünde) ama model "yok" dedi: tekrar sor. Kutu açıksa önce
+                  // belirgin göz at (kutu %60'a iner), sonraki net kareyle oku; yeni cümle kutunun altında kaybolmasın.
                   retried[seq + 1] = true;
                   if (seq === reqSeq) lastSentSig = null;
+                  if (boxOpen && placement === 'cover' && !peekSince) { peekSince = Date.now(); peekAckAt = 0; lastPeekAt = Date.now(); emit({ peek: true }); freshNext = true; }
                   log('model "altyazı yok" dedi ama ekranda altyazı var; bir kez daha deneniyor');
                   event({ tur: 'tekrar_deneme', sebep: 'model altyazı yok dedi' });
                   return;
