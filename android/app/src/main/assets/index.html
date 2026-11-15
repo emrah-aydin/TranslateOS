@@ -38,7 +38,7 @@
   .row { display: flex; gap: 8px; margin-top: 12px; }
   input { flex: 1; min-width: 0; padding: 13px 14px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,.14); background: var(--panel2); color: var(--text); font: inherit; }
   input:focus { outline: none; border-color: var(--accent); }
-  #code { font: 800 28px/1 ui-monospace, monospace; letter-spacing: 9px; text-align: center; text-transform: uppercase; padding: 15px; }
+  #code { display: block; width: 100%; font: 800 28px/1 ui-monospace, monospace; letter-spacing: 9px; text-align: center; text-transform: uppercase; padding: 15px; }
   .sec { padding: 12px 16px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: var(--text); font: inherit; font-weight: 700; }
   .link { background: none; border: 0; color: var(--accent); font: inherit; font-size: 14px; padding: 0; }
   #go { width: 100%; padding: 17px; border: 0; border-radius: 14px; background: var(--accent); color: var(--ink); font: inherit; font-size: 18px; font-weight: 800; }
@@ -80,7 +80,7 @@
     <div class="scanning" id="scanning"><div class="spin"></div>TV aranıyor…</div>
     <div class="row hidden" id="rescan-row"><button class="link" id="rescan" type="button">Yeniden ara</button></div>
     <div class="row">
-      <input id="ip" inputmode="decimal" placeholder="Bulamadıysa IP adresini yaz" autocomplete="off">
+      <input id="ip" inputmode="decimal" placeholder="IP adresi (örn. 192.168.1.50)" autocomplete="off">
       <button class="sec" id="addip" type="button">Ekle</button>
     </div>
     <div class="msg warn hidden" id="hint"></div>
