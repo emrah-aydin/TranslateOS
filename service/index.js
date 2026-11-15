@@ -478,6 +478,7 @@ function cropForGemini(img, box, sh) {
 // Sol üstte yazı belirince ya da değişince o bölge Gemini'ye ayrı bir talimatla gider; Türkçesi İngilizce kutunun TAM
 // ÜZERİNE, %90 koyu bir kutuyla yazılır (tuş simgeleri uygulamada çizilir). Altyazıdaki gibi kutunun altındaki İngilizce
 // 10 kat parlatılarak okunmaya devam eder; değişirse yeniden çevrilir, kaybolursa Türkçe de kalkar.
+var HELP_ENABLED = CONFIG.help === true;   // şimdilik kapalı (v2): açmak için config.local.json { "help": true }
 var HELP_REGION = { x0: 0.02, x1: 0.50, y0: 0.02, y1: 0.36 };
 var HELP_PROMPT = 'This is the top-left corner of a video game screen. If it contains a help, tip or mission instruction text box, ' +
   'return the exact English text and its natural Turkish translation as JSON {"en":"...","tr":"..."}. Controller button icons ' +
@@ -491,7 +492,7 @@ function helpHide(why) {
   if (why) log('ipucu kaldırıldı (' + why + ')');
 }
 function helpTick(img) {
-  if (!running || help.busy || Date.now() - help.lastCheck < 250) return;   // her karede bak (gecikme az olsun)
+  if (!HELP_ENABLED || !running || help.busy || Date.now() - help.lastCheck < 250) return;   // her karede bak (gecikme az olsun)
   help.lastCheck = Date.now();
   var sh = help.visible ? help.shade : null;
   var box = regionBox(img, HELP_REGION), sig = signature(img, box, sh);

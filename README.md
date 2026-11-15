@@ -119,7 +119,8 @@ Geliştirme sırasında anahtar ve test ayarları `service/config.local.json` do
 - [x] Developer Mode süresini kendiliğinden uzatma
 - [x] API anahtarını TV'de QR kodla girme
 - [x] Ortak çeviri hafızası: bir kişinin çevirdiği cümle herkese anında ve ücretsiz gelsin
-- [ ] Anahtarsız mod: Gemini anahtarı almadan, günlük sınırla kullanım
+- [x] Anahtarsız mod: Gemini anahtarı almadan, günlük sınırla kullanım
+- [ ] Sol üstteki görev ve ipucu yazılarının çevirisi (tuş simgeleriyle)
 - [ ] Gecikmeyi 1 saniyenin altına indirmek
 - [ ] Daha fazla TV modeli ve oyun testi
 
