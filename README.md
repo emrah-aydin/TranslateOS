@@ -43,6 +43,7 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
 - 📺 **Kumanda ile kontrol.** Kırmızı: altyazı aç/kapat · Sarı: Türkçe İngilizcenin üstünde / yerine · Yeşil: menü · Mavi: anahtarı değiştir · Geri: çıkış.
+- 🔁 **Developer Mode süresi kendiliğinden uzar.** Kalan süre menüde görünür.
 - 😴 **TV uyumaz.** Oyun sırasında ekran koruyucu ve uyku modu devreye girmez.
 
 ## TV menüsü
@@ -82,13 +83,13 @@ Senin TV'n listede yoksa dene ve sonucu [issue olarak bildir](../../issues). Lis
 
 ## Kurulum
 
-📖 **Adım adım, resimli rehber: [docs/KURULUM.md](docs/KURULUM.md)** (~15 dakika, bir kez)
+📖 **Adım adım rehber: [docs/KURULUM.md](docs/KURULUM.md)** (~10 dakika, bir kez)
 
 Kısaca:
-1. TV'de **Developer Mode**'u aç (ücretsiz LG geliştirici hesabıyla).
-2. [Son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `.ipk` dosyasını indir, ücretsiz [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop/releases) ile TV'ye kur.
-3. TranslateOS'u aç, ekrandaki **QR kodu telefonunla okut** ve ücretsiz Gemini anahtarını yapıştır.
-4. İlk açılıştaki izni onayla. PS5'te oyunu aç, Türkçe altyazı gelsin.
+1. TV'de **Developer Mode**'u aç (ücretsiz LG geliştirici hesabıyla), **Key Server**'ı da aç.
+2. [Son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) **kurulum programını** indir: Windows için `TranslateOS-Kurulum.exe`, Mac için `TranslateOS-Kurulum-Mac.zip`.
+3. Programı aç. TV'ni kendisi bulur; TV'deki 6 haneli kodu yaz, **Kur**'a bas. TranslateOS TV'de açılır.
+4. Ekrandaki **QR kodu telefonunla okut**, ücretsiz Gemini anahtarını yapıştır. İlk açılıştaki izni onayla, PS5'te oyunu aç.
 
 <p align="center"><img src="docs/screenshots/translateos-kurulum-qr.jpg" width="70%" alt="TranslateOS kurulum ekranı: QR ile Gemini anahtarı girişi"></p>
 
@@ -98,13 +99,15 @@ Kısaca:
 npm run setup                                   # ares-cli ve servis bağımlılıkları
 sh tools/build-release.sh                       # anahtarsız yayın paketi → dist/release/
 npx ares-install -d tv dist/release/*.ipk       # TV'ye kur (cihaz adı: tv)
+sh installer/build.sh                            # kurulum programı (Windows .exe + Mac .zip) → dist/installer/
 ```
 
 Geliştirme sırasında anahtar ve test ayarları `service/config.local.json` dosyasına yazılabilir (git dışı, yayın paketine girmez).
 
 ## Yol haritası
 
-- [ ] Tek tuşla kurulum (Homebrew Channel) ve resimli Türkçe kurulum rehberi
+- [x] Windows ve Mac için tek tıklık kurulum programı
+- [x] Developer Mode süresini kendiliğinden uzatma
 - [x] API anahtarını TV'de QR kodla girme
 - [ ] Ortak çeviri hafızası: bir kişinin çevirdiği cümle herkese anında ve ücretsiz gelsin
 - [ ] Gecikmeyi 1 saniyenin altına indirmek
@@ -131,6 +134,7 @@ TranslateOS, [GNU Affero Genel Kamu Lisansı v3.0 (AGPL-3.0)](LICENSE) ile yayı
 ### Üçüncü taraf
 
 - `service/registration.json`, `tv-service/registration.json`: TV eşleşme bildirimi, [aiowebostv](https://github.com/home-assistant-libs/aiowebostv) projesinden (Apache-2.0).
+- Kurulum programı: [ssh2](https://github.com/mscdex/ssh2) (MIT), [Node.js](https://nodejs.org) (MIT).
 - [@jsquash/jpeg](https://github.com/jamsinclair/jSquash) (Apache-2.0), [jpeg-js](https://github.com/jpeg-js/jpeg-js) (BSD-3-Clause), [ws](https://github.com/websockets/ws) (MIT).
 - Çeviri: Google Gemini API. Anahtar repoda tutulmaz.
 

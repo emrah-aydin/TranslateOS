@@ -133,6 +133,7 @@
     luna('stats', SVC + 'stats', {}, function (r) {
       document.getElementById('m-calls').textContent = r.calls || 0;
       document.getElementById('m-mem').textContent = r.memory || 0;
+      if (r.devmodeHours != null) document.getElementById('m-dev').textContent = Math.round(r.devmodeHours / 24) + ' gün (otomatik uzatılır)';
     });
     document.getElementById('m-sub').textContent = enabled ? 'Açık' : 'Kapalı';
     document.getElementById('m-place').textContent = placement === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine';

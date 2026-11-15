@@ -986,8 +986,38 @@ service.register('setupInfo', function (m) {
 });
 service.register('forgetKey', function (m) { delete SETTINGS.geminiKey; delete CONFIG.geminiKey; saveSettings(); emit({ status: 'nokey' }); m.respond({ returnValue: true }); });
 
+// --- Developer Mode süresini otomatik uzat ---
+// TV'deki oturum koduyla LG'nin resmî adresine sorulur; 30 günün altına düştüyse yenilenir (~41 güne döner).
+var devmodeHours = null, lastDevmodeCheck = 0;
+function getText(url) {
+  return new Promise(function (resolve) {
+    var req = https.get(url, function (res) { var b = ''; res.on('data', function (c) { b += c; }); res.on('end', function () { resolve(b); }); });
+    req.on('error', function () { resolve(''); }); req.setTimeout(8000, function () { req.destroy(); });
+  });
+}
+async function devmodeKeepAlive() {
+  if (Date.now() - lastDevmodeCheck < 6 * 3600 * 1000) return;
+  lastDevmodeCheck = Date.now();
+  var token = '';
+  try { token = fs.readFileSync('/var/luna/preferences/devmode_enabled', 'utf8').trim(); } catch (e) { log('Developer Mode kodu okunamadı: ' + e.code); return; }
+  if (!/^[0-9a-f]{20,}$/i.test(token)) { log('Developer Mode kodu geçersiz görünüyor'); return; }
+  var base = 'https://developer.lge.com/secure/';
+  function hoursOf(txt) { try { var m = JSON.parse(txt).errorMsg.match(/^(\d+):(\d+)/); return m ? +m[1] + (+m[2]) / 60 : null; } catch (e) { return null; } }
+  var h = hoursOf(await getText(base + 'CheckDevModeSession.dev?sessionToken=' + token));
+  if (h == null) { log('Developer Mode süresi sorgulanamadı'); return; }
+  if (h < 720) {
+    var r = await getText(base + 'ResetDevModeSession.dev?sessionToken=' + token);
+    log('Developer Mode süresi yenilendi (' + Math.round(h) + ' saat kalmıştı): ' + String(r).slice(0, 80));
+    h = hoursOf(await getText(base + 'CheckDevModeSession.dev?sessionToken=' + token)) || h;
+  }
+  devmodeHours = h;
+  log('Developer Mode: ' + Math.round(h) + ' saat (~' + Math.round(h / 24) + ' gün) kaldı');
+  emit({ devmodeHours: Math.round(h) });
+}
+
 var keepAlive = null;
 service.register('start', function (message) {
+  devmodeKeepAlive().catch(function () {});
   if (message.isSubscription) subscribers.push(message);
   log('hafıza: ' + Object.keys(cacheByEn).length + ' cümle, ' + fpStore.length + ' parmak izi (' + (MEMORY_FILE || 'yazılamıyor') + ')');
   log('start çağrıldı (abone: ' + subscribers.length + ', anahtar: ' + (CONFIG.geminiKey ? 'var' : 'YOK') + ', node ' + process.version + ')');
@@ -1016,7 +1046,7 @@ service.register('boxRect', function (m) {
   if (p.peek) peekAckAt = Date.now();
   m.respond({ returnValue: true });
 });
-service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, placement: placement }, stats)); });
+service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, placement: placement, devmodeHours: devmodeHours }, stats)); });
 service.register('showInput', function (m) {
   // Uygulamadan çıkarken TV'nin kendi HDMI ekranına güvenli dönüş.
   var id = 'com.webos.app.hdmi' + ((m.payload && m.payload.port) || 1);

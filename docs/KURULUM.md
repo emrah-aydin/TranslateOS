@@ -1,11 +1,11 @@
 # TranslateOS kurulum rehberi
 
-LG webOS TV'ye TranslateOS'u kurmak yaklaşık **15 dakika** sürer. Bir kez yapılır.
+LG webOS TV'ye TranslateOS'u kurmak yaklaşık **10 dakika** sürer. Bir kez yapılır.
 
 **Gerekenler:**
 - LG webOS akıllı TV (test edilen: LG 55QNED7EB3C, webOS 26). Diğer modeller için [uyumluluk listesine](../README.md#desteklenen-tvler) bak.
 - PS5 (ya da altyazılı oyun gösteren herhangi bir cihaz), TV'ye HDMI ile bağlı.
-- Bilgisayar (Windows, Mac ya da Linux). Sadece kurulum için; sonra gerekmez.
+- Bilgisayar (Windows ya da Mac). Sadece kurulum için, bir kez; sonra gerekmez.
 - Telefon. Sadece Gemini anahtarını girmek için.
 - TV, bilgisayar ve telefon **aynı Wi-Fi** ağında olmalı.
 
@@ -24,23 +24,31 @@ LG webOS TV'ye TranslateOS'u kurmak yaklaşık **15 dakika** sürer. Bir kez yap
 4. Developer Mode'u tekrar aç, **Key Server**'ı **ON** yap.
 5. Ekranda yazan **IP adresini** ve **Passphrase**'i (6 karakter) bir kenara not et.
 
-> Developer Mode süreli çalışır. Ekrandaki süre dolmadan arada bir **Extend**'e bas. Süre dolarsa TranslateOS TV'den silinir; bu adımları tekrarlayıp yeniden kurman gerekir.
+> Developer Mode süreli çalışır. TranslateOS bu süreyi her açılışta kontrol eder ve azaldığında **kendiliğinden uzatır**. Kalan süre TranslateOS menüsünde (Yeşil tuş) görünür.
 
-## 3. TranslateOS'u indir
+## 3. Kurulum programını indir
 
-[GitHub'daki son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) `com.translateos.app_..._all.ipk` dosyasını indir.
+[Son sürüm sayfasından](https://github.com/emrah-aydin/TranslateOS/releases/latest) bilgisayarına uygun dosyayı indir:
 
-## 4. Bilgisayardan TV'ye kur
+| Bilgisayar | Dosya |
+|---|---|
+| Windows | `TranslateOS-Kurulum.exe` |
+| Mac (Apple Silicon ve Intel) | `TranslateOS-Kurulum-Mac.zip` |
 
-1. Ücretsiz **webOS Dev Manager** programını indir ve kur: [github.com/webosbrew/dev-manager-desktop/releases](https://github.com/webosbrew/dev-manager-desktop/releases)
-2. Programı aç › **Add Device** (cihaz ekle).
-3. TV'nin **IP adresini** ve **Passphrase**'i gir, kaydet.
-4. **Apps** bölümüne geç ve indirdiğin `.ipk` dosyasını pencereye sürükle (ya da **Install**).
-5. Kurulum bitince TV'nin uygulama listesinde **TranslateOS** görünür.
+## 4. Programı aç, kodu yaz
+
+1. İndirdiğin programı çift tıklayarak aç. Tarayıcında bir kurulum sayfası açılır.
+   - **Windows:** "Windows bilgisayarınızı korudu" uyarısı çıkarsa **Ek bilgi** › **Yine de çalıştır**'a bas.
+   - **Mac:** Zip'i aç, **TranslateOS Kurulum**'u çift tıkla. "Açılamıyor" uyarısı çıkarsa **Sistem Ayarları › Gizlilik ve Güvenlik**'e gir, en altta **Yine de Aç**'a bas.
+2. Sayfa ağdaki LG TV'ni kendisi bulur. Bulamazsa TV'nin IP adresini elle yaz.
+3. Developer Mode uygulamasındaki **Passphrase**'i (6 karakter) yaz, **TranslateOS'u kur**'a bas.
+4. Bir dakikadan kısa sürede kurulum biter ve TranslateOS TV'nde kendiliğinden açılır.
+
+> Program TranslateOS'un en son sürümünü GitHub'dan indirip kurar. Güncellemek için programı yeniden çalıştırman yeterli; çeviri hafızan ve anahtarın silinmez.
 
 ## 5. Gemini anahtarını telefonla gir
 
-1. TV'de **TranslateOS**'u aç. Ekranda bir QR kod çıkar.
+1. TranslateOS açılınca ekranda bir QR kod çıkar.
 
    ![TranslateOS kurulum ekranı](screenshots/translateos-kurulum-qr.jpg)
 
@@ -71,5 +79,11 @@ Bitti. PS5'te altyazılı bir oyun aç; İngilizce altyazılar Türkçe olarak o
 
 - **QR kodu okutunca sayfa açılmıyor:** Telefon ve TV aynı Wi-Fi ağında olmalı. Misafir ağı ya da mobil veri çalışmaz.
 - **"Bu TV ekran görüntüsü vermiyor" yazıyor:** TV modelin henüz desteklenmiyor olabilir. Lütfen modelini ve webOS sürümünü (Ayarlar › Genel › Cihaz › TV Bilgisi) [GitHub'da bildir](https://github.com/emrah-aydin/TranslateOS/issues).
-- **Uygulama listeden kayboldu:** Developer Mode süresi dolmuş olabilir. 2. ve 4. adımları tekrarla.
+- **Kurulum programı TV'yi bulamıyor:** TV ile bilgisayar aynı Wi-Fi ağında mı? TV'nin IP adresini Developer Mode uygulamasından okuyup sayfaya elle yaz.
+- **"Kod yanlış" diyor:** Developer Mode uygulamasındaki Passphrase'i kontrol et. Key Server'ı kapatıp açınca kod değişebilir.
+- **Uygulama listeden kayboldu:** Developer Mode kapanmış olabilir. 2. adımı tekrarla, sonra kurulum programını yeniden çalıştır.
 - **Görüntü siyah kaldı:** Kumandadan giriş tuşuna (Input) basıp HDMI girişini yeniden seç.
+
+## Gelişmiş: kurulum programı olmadan
+
+Kurulum programını kullanmak istemezsen `.ipk` dosyasını [son sürümden](https://github.com/emrah-aydin/TranslateOS/releases/latest) indirip ücretsiz [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop/releases) ile de kurabilirsin: **Add Device** (TV'nin IP adresi ve Passphrase) › **Apps** › `.ipk` dosyasını sürükle.

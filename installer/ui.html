@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TranslateOS Kurulum</title>
+<style>
+  :root {
+    --bg: #070b12; --panel: #0e1622; --panel2: #121c2b; --line: rgba(120,180,230,.16);
+    --text: #e9f2fb; --muted: #8fa3b8; --accent: #5ec8ff; --accent-ink: #04121c;
+    --ok: #4cd08a; --warn: #f5c542; --bad: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { min-height: 100vh; background: radial-gradient(1200px 500px at 50% -200px, rgba(94,200,255,.12), transparent 70%), var(--bg); }
+  main { max-width: 640px; margin: 0 auto; padding: 40px 16px 64px; }
+  header { margin-bottom: 28px; }
+  .logo { font-size: 30px; font-weight: 800; letter-spacing: .3px; }
+  .logo b { color: var(--accent); }
+  header p { margin: 4px 0 0; color: var(--muted); }
+
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin-bottom: 16px; }
+  h2 { margin: 0 0 4px; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+  h2 .n { width: 26px; height: 26px; border-radius: 50%; background: var(--panel2); border: 1px solid var(--line); display: inline-grid; place-items: center; font-size: 14px; color: var(--accent); flex: none; }
+  .hint { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+  .pre ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+  .pre li { margin: 3px 0; }
+  a { color: var(--accent); }
+
+  .tvs { display: grid; gap: 10px; }
+  .tv { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; border-radius: 12px; cursor: pointer;
+        background: var(--panel2); border: 1.5px solid var(--line); color: var(--text); font: inherit; }
+  .tv:hover { border-color: rgba(94,200,255,.45); }
+  .tv[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(94,200,255,.15); }
+  .tv svg { flex: none; color: var(--accent); }
+  .tv .t { flex: 1; min-width: 0; }
+  .tv .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tv .ip { color: var(--muted); font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: rgba(255,255,255,.05); color: var(--muted); }
+  .chip.on { color: var(--ok); background: rgba(76,208,138,.1); }
+  .chip.off { color: var(--warn); background: rgba(245,197,66,.1); }
+  .scanning { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; padding: 6px 0; }
+  .spin { width: 16px; height: 16px; border: 2px solid rgba(94,200,255,.25); border-top-color: var(--accent); border-radius: 50%; animation: r 0.8s linear infinite; flex: none; }
+  @keyframes r { to { transform: rotate(360deg); } }
+  .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }
+  input:focus { outline: none; border-color: var(--accent); }
+  #code { font: 700 26px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 8px; text-align: center; text-transform: uppercase; padding: 14px; }
+  button.sec { padding: 12px 16px; border-radius: 10px; border: 1.5px solid var(--line); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+  button.sec:hover { border-color: rgba(94,200,255,.45); }
+  .link { background: none; border: 0; color: var(--accent); font: inherit; font-size: 14px; cursor: pointer; padding: 0; }
+
+  #go { width: 100%; padding: 16px; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-family: inherit; font-size: 18px; font-weight: 800; line-height: 1; cursor: pointer; }
+  #go:disabled { opacity: .35; cursor: not-allowed; }
+
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .steps li { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+  .steps li .ic { width: 22px; height: 22px; display: grid; place-items: center; flex: none; }
+  .steps li.run { color: var(--text); }
+  .steps li.ok { color: var(--text); }
+  .steps li.ok .ic { color: var(--ok); }
+  .steps li.error .ic { color: var(--bad); }
+  .steps .note { color: var(--muted); font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.18); }
+
+  .msg { margin-top: 16px; padding: 14px 16px; border-radius: 12px; font-size: 15px; }
+  .msg.bad { background: rgba(255,107,107,.08); border: 1px solid rgba(255,107,107,.3); }
+  .msg.good { background: rgba(76,208,138,.08); border: 1px solid rgba(76,208,138,.3); }
+  .msg h3 { margin: 0 0 6px; font-size: 18px; }
+  .msg p { margin: 4px 0; color: var(--text); }
+  .hidden { display: none !important; }
+  footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="logo">Translate<b>OS</b></div>
+    <p>LG TV'ne kurulum. Yaklaşık 1 dakika sürer.</p>
+  </header>
+
+  <section class="pre">
+    <h2>Başlamadan önce</h2>
+    <ul>
+      <li>TV'de <b>Developer Mode</b> uygulamasında <b>Dev Mode Status</b> ve <b>Key Server</b> açık (ON) olmalı.</li>
+      <li>Bilgisayar ve TV <b>aynı Wi-Fi</b> ağında olmalı.</li>
+    </ul>
+    <p class="hint" style="margin:10px 0 0">Developer Mode'u hiç açmadıysan: <a href="https://github.com/emrah-aydin/TranslateOS/blob/main/docs/KURULUM.md" target="_blank" rel="noopener">resimli rehber</a></p>
+  </section>
+
+  <section id="s-tv">
+    <h2><span class="n">1</span>TV'ni seç</h2>
+    <p class="hint">Ağdaki LG TV'ler aranıyor.</p>
+    <div class="tvs" id="tvs"></div>
+    <div class="scanning" id="scanning"><div class="spin"></div>TV aranıyor…</div>
+    <div class="row" id="rescan-row">
+      <button class="link" id="rescan" type="button">Yeniden ara</button>
+    </div>
+    <div class="row">
+      <input id="ip" inputmode="decimal" placeholder="Bulamadıysa IP adresini yaz (örn. 192.168.1.50)" autocomplete="off">
+      <button class="sec" id="addip" type="button">Ekle</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0">IP adresi, TV'deki Developer Mode uygulamasında yazar.</p>
+  </section>
+
+  <section id="s-code">
+    <h2><span class="n">2</span>TV'deki kodu yaz</h2>
+    <p class="hint">Developer Mode uygulamasında <b>Passphrase</b> olarak yazan 6 karakter.</p>
+    <input id="code" maxlength="6" placeholder="······" autocomplete="off" autocapitalize="characters" spellcheck="false">
+  </section>
+
+  <button id="go" disabled>TranslateOS'u kur</button>
+
+  <section id="s-progress" class="hidden" style="margin-top:16px">
+    <ul class="steps" id="steps"></ul>
+    <div class="msg bad hidden" id="err"></div>
+    <div class="msg good hidden" id="done">
+      <h3>Kurulum tamam 🎉</h3>
+      <p>TranslateOS TV'nde açıldı. Ekrandaki <b>QR kodu telefonunla okut</b> ve ücretsiz Gemini anahtarını gir.</p>
+      <p>İlk açılışta TV izin isterse <b>İzin ver</b>'e bas.</p>
+      <p style="color:var(--muted);margin-top:10px">Bu pencereyi kapatabilirsin. Bilgisayara bir daha gerek yok.</p>
+    </div>
+  </section>
+
+  <footer>TranslateOS · Emrah AYDIN · <a href="https://github.com/emrah-aydin/TranslateOS" target="_blank" rel="noopener">GitHub</a></footer>
+</main>
+
+<script>
+(function () {
+  var BASE = '/__TOKEN__/';
+  var $ = function (id) { return document.getElementById(id); };
+  var tvs = {}, selected = null, polling = null;
+  var TV_ICON = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20h8"/></svg>';
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function render() {
+    var list = Object.keys(tvs).map(function (k) { return tvs[k]; });
+    $('tvs').innerHTML = list.map(function (t) {
+      var chips = '<span class="chip ' + (t.devMode ? 'on' : 'off') + '">Developer Mode ' + (t.devMode ? 'açık' : 'kapalı') + '</span>' +
+                  '<span class="chip ' + (t.keyServer ? 'on' : 'off') + '">Key Server ' + (t.keyServer ? 'açık' : 'kapalı') + '</span>';
+      return '<button class="tv" type="button" data-ip="' + esc(t.ip) + '" aria-pressed="' + (selected === t.ip) + '">' + TV_ICON +
+        '<span class="t"><div class="name">' + esc(t.name) + '</div><div class="ip">' + esc(t.ip) + '</div><div class="chips">' + chips + '</div></span></button>';
+    }).join('');
+    Array.prototype.forEach.call(document.querySelectorAll('.tv'), function (b) {
+      b.onclick = function () { selected = b.getAttribute('data-ip'); render(); $('code').focus(); };
+    });
+    if (!selected && list.length === 1) { selected = list[0].ip; render(); return; }
+    update();
+  }
+
+  function update() { $('go').disabled = !(selected && /^[A-Za-z0-9]{6}$/.test($('code').value.trim())) || (polling !== null); }
+
+  function scan() {
+    $('scanning').classList.remove('hidden'); $('rescan-row').classList.add('hidden');
+    fetch(BASE + 'scan').then(function (r) { return r.json(); }).then(function (d) {
+      (d.tvs || []).forEach(function (t) { tvs[t.ip] = t; });
+      render();
+    }).catch(function () {}).then(function () {
+      $('scanning').classList.add('hidden'); $('rescan-row').classList.remove('hidden');
+    });
+  }
+
+  $('rescan').onclick = scan;
+  $('addip').onclick = function () {
+    var ip = $('ip').value.trim();
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { $('ip').focus(); return; }
+    fetch(BASE + 'probe?ip=' + encodeURIComponent(ip)).then(function (r) { return r.json(); }).then(function (t) {
+      if (t.ip) { tvs[t.ip] = t; selected = t.ip; $('ip').value = ''; render(); $('code').focus(); }
+    });
+  };
+  $('ip').onkeydown = function (e) { if (e.key === 'Enter') $('addip').click(); };
+  $('code').oninput = function () { this.value = this.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(); update(); };
+  $('code').onkeydown = function (e) { if (e.key === 'Enter' && !$('go').disabled) $('go').click(); };
+
+  function showJob(j) {
+    var icon = { wait: '<span class="dot"></span>', run: '<span class="spin"></span>', ok: '✓', error: '✕' };
+    $('steps').innerHTML = (j.steps || []).map(function (s) {
+      return '<li class="' + s.state + '"><span class="ic">' + icon[s.state] + '</span><span>' + esc(s.label) +
+        (s.note ? ' <span class="note">· ' + esc(s.note) + '</span>' : '') + '</span></li>';
+    }).join('');
+    if (j.state === 'error') { $('err').textContent = j.error; $('err').classList.remove('hidden'); }
+    if (j.state === 'ok') { $('done').classList.remove('hidden'); }
+  }
+
+  $('go').onclick = function () {
+    $('err').classList.add('hidden'); $('done').classList.add('hidden');
+    $('s-progress').classList.remove('hidden');
+    $('go').textContent = 'Kuruluyor…';
+    polling = 0; update();
+    fetch(BASE + 'install', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip: selected, code: $('code').value.trim() }) })
+      .then(function () {
+        polling = setInterval(function () {
+          fetch(BASE + 'status').then(function (r) { return r.json(); }).then(function (j) {
+            showJob(j);
+            if (j.state !== 'run') {
+              clearInterval(polling); polling = null;
+              $('go').textContent = j.state === 'ok' ? 'Kuruldu ✓' : 'Tekrar dene';
+              $('go').disabled = j.state === 'ok'; if (j.state !== 'ok') update();
+            }
+          });
+        }, 500);
+      });
+  };
+
+  // Sayfa açık kaldıkça programa haber ver (kapanınca program kendiliğinden çıkar)
+  setInterval(function () { fetch(BASE + 'status').catch(function () {}); }, 30000);
+  scan();
+})();
+</script>
+</body>
+</html>

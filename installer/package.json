@@ -1,0 +1,10 @@
+{
+  "name": "translateos-installer",
+  "private": true,
+  "description": "TranslateOS kurulum programı: LG webOS TV'yi bulur ve uygulamayı kurar",
+  "main": "main.js",
+  "scripts": { "start": "node main.js", "build": "sh build.sh" },
+  "license": "AGPL-3.0-only",
+  "dependencies": { "ssh2": "^1.16.0" },
+  "devDependencies": { "esbuild": "^0.25.0", "postject": "^1.0.0-alpha.6" }
+}

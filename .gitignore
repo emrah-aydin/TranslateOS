@@ -16,3 +16,9 @@ service/config.local.json
 tv-service/tessdata/
 service/bench.jpg
 service/memory.json
+service/fp.json
+service/settings.json
+
+# Kurulum programı derleme çıktıları
+installer/build/
+installer/.cache/
