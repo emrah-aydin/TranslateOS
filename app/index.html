@@ -11,7 +11,7 @@
   #sub {
     position: absolute; box-sizing: border-box; display: none;
     flex-direction: column; align-items: center; justify-content: center; text-align: center;
-    padding: 6px 20px; max-width: 1100px;   /* sol alttaki mini haritaya binmesin (harita ~x 90–380 px) */
+    padding: 6px 20px; max-width: 1100px; width: max-content;   /* ortadan başladığı için genişlik ekranın yarısıyla sınırlanmasın */   /* sol alttaki mini haritaya binmesin (harita ~x 90–380 px) */
     background: rgba(0, 0, 0, 0.9); color: #ffe066; border-radius: 14px;   /* yumuşak sarı: GTA'nın beyaz İngilizcesinden ayrışır */
     font: 600 32px/1.3 sans-serif;   /* GTA'nın İngilizce altyazısıyla aynı boy */
     white-space: pre-line;   /* geç gelen önceki cümle üst satırda */
@@ -21,6 +21,9 @@
   /* Yığılan cümleler: en yenisi parlak ve büyük, öncekiler soluk ve küçük */
   #sub .old { display: block; font-size: 26px; font-weight: 500; color: rgba(255, 224, 102, .5); line-height: 1.25; }
   #sub .cur { display: block; }
+  /* En altta: tek cümle, geniş ve biraz küçük; kutu yukarı uzayıp İngilizceye binmesin */
+  #sub.bottom { font-size: 28px; line-height: 1.22; padding: 4px 18px; }
+  #sub.bottom .old { display: none; }
   #sub .old + .cur { margin-top: 4px; }
 
   /* Sol üst ipucu: İngilizce ipucu kutusunun TAM ÜZERİNDE, %90 koyu (servis altındaki İngilizceyi okumaya devam eder) */

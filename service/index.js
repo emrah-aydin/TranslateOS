@@ -543,7 +543,8 @@ var PROMPT = 'This is the bottom strip of a video game frame. If it contains an 
   'profanity, slurs, insults and slang must be translated faithfully with equally strong natural Turkish street language. ' +
   'Keep names and places as they are. Make it sound like natural spoken Turkish game subtitles. ' +
   'Use correct standard Turkish spelling (TDK rules), e.g. "terk edilmiş", "her şey", "bir şey" are written separately. ' +
-  'A dialogue subtitle is a spoken line, not a lone character name. Single-word exclamations and very short lines ' +
+  'A dialogue subtitle is a spoken line, not a lone character name. If two speakers\' lines are shown together (the second line is often grey), ' +
+  'return BOTH: in "en" the two lines separated by \\n, and in "tr" their two translations separated by \\n, in the same order. Single-word exclamations and very short lines ' +
   '(e.g. "Yay!", "Who?", "Gay!", "Shit.") are dialogue too and must be translated. Short mission objectives shown in the same place (e.g. "Get a car.", ' +
   '"Lose the Cops.", "Go to the bike rental store.") count as subtitles too, but if a thin spoken dialogue line is also visible (objectives are bold, usually below it, often with a coloured word), return ONLY the dialogue line. Ignore HUD, minimap, location or street names, big mission titles, ' +
   'phone screens, signs, license plates and any Turkish text. Part of the subtitle may be faint because it sits behind a ' +

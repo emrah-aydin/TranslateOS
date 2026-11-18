@@ -31,17 +31,18 @@
   // Yalnızca genişliği/yüksekliği Türkçe metne göre değişir. GTA altyazısı hep ortada; iki satırlık İngilizcenin
   // üstü ~%88,8, alt kenarı ~%95,5 yükseklikte (ölçüm).
   var ABOVE_BOTTOM = 100;   // px: tek satırlık İngilizcenin (üstü ~%92) hemen üstü. İki satırda kutu İngilizcenin üstüne çıkar.
-  var BOTTOM_EDGE = 10;    // px: "En altta" kutusunun ekranın altından uzaklığı
+  var BOTTOM_EDGE = 2;    // px: "En altta" kutusunun ekranın altından uzaklığı
   var COVER_BOTTOM = 36;    // px: İngilizcenin alt kenarının biraz altı; kutu yukarı doğru büyür
   function placeBox(bbox) {
     var padX = 26, padY = 12;
     var b = bbox || { x0: 0.3, x1: 0.7, y0: 0.9, y1: 0.95 };
     subEl.style.left = (W / 2) + 'px';
     subEl.style.transform = 'translateX(-50%)';
+    subEl.classList.toggle('bottom', placement === 'bottom');
     if (placement === 'bottom') {
       // En altta: ekranın alt kenarında, sinema altyazısı gibi; İngilizceyi hiç örtmez (GTA 6'da görev yazısının üstüne gelir)
       subEl.style.bottom = BOTTOM_EDGE + 'px';
-      subEl.style.maxWidth = '1100px';
+      subEl.style.maxWidth = '1560px';
       subEl.style.minWidth = '0px';
       subEl.style.minHeight = '0px';
     } else if (placement === 'above') {
