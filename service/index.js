@@ -735,13 +735,13 @@ function raceTranslate(jpg, onEarly) {
     var fired = false, done = false, fails = 0;
     function early(tr, ms, src, en) { if (!fired) { fired = true; onEarly(tr, ms, src, en); } }
     var par = CONFIG.parallel || (CONFIG.geminiKey ? PARALLEL : 1);   // anahtarsız modda tek istek (ortak kota ve fatura için)
-    // Anahtarsız modda yedek: 1,5 sn içinde Türkçe gelmediyse (normali ~1,2 sn) aynı istek bir kez daha gider, önce dönen kullanılır.
+    // Anahtarsız modda yedek: 1,05 sn içinde Türkçe gelmediyse (ölçüm: normali ~0,85–0,95 sn) aynı istek bir kez daha gider, önce dönen kullanılır.
     if (par === 1) setTimeout(function () {
       if (fired || done) return;
       par = 2; stats.hedges = (stats.hedges || 0) + 1;
       readAndTranslateFast(jpg, early).then(function (r) { r.hedged = true; if (!done) { done = true; resolve(r); } },
         function (e) { fails++; if (fails >= par && !done) { done = true; reject(e); } });
-    }, 1500);
+    }, 1050);
     for (var i = 0; i < par; i++) {
       readAndTranslateFast(jpg, early).then(function (r) { if (!done) { done = true; resolve(r); } },
         function (e) { fails++; if (fails >= par && !done) { done = true; reject(e); } });
