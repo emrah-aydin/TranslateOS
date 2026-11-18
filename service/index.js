@@ -34,7 +34,7 @@ var KEY_FILE = '/tmp/translateos_app_client_key';
 var placement = (SETTINGS.placement || CONFIG.placement) === 'cover' ? 'cover' : 'above';
 
 // Altyazı bölgesi (kare oranı). Türkçe kutumuz bunun ÜSTÜNDE durur, bu yüzden bu bölgeye girmez.
-var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.878, y1: 1.0 };   // üstü: iki satırlık altyazının başı (~%88,8); Türkçe kutu bunun hemen üstünde durur
+var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.84, y1: 1.0 };   // GTA 6: iki konuşmacılı altyazının üst satırı ~%86'da başlar   // üstü: iki satırlık altyazının başı (~%88,8); Türkçe kutu bunun hemen üstünde durur
 
 var subscribers = [];
 var running = false;
@@ -438,10 +438,10 @@ function sigDiff(a, b) {
 var CHANGED = 0.2, SAME = 0.12, STILL_SAME = 0.35;
 // Kutuyu önceden açmak için yeterince "altyazı gibi" mi: yoğun, ortalanmış, satır yüksekliğinde.
 function looksLikeSubtitle(sig) {
-  var b = sig.bbox; if (!b || sig.density < 0.003) return false;
+  var b = sig.bbox; if (!b || sig.density < 0.0008) return false;   // GTA 6'nın küçük yazısında "No." gibi kısa satırlar da geçsin
   var h = (b.y1 - b.y0) * 540, w = (b.x1 - b.x0) * 960, cx = (b.x0 + b.x1) / 2;
   // Altyazı ekranın tam ortasındadır (ölçüm: hep 0,50); bu sıkı kural sayesinde desenli zeminde diğer sınırlar gevşek tutulabilir.
-  return h >= 8 && h <= 48 && w >= 50 && w / h >= 2 && Math.abs(cx - 0.5) < 0.06 &&
+  return h >= 7 && h <= 48 && w >= 16 && w / h >= 1.5 && Math.abs(cx - 0.5) < 0.06 &&
     b.fill >= 0.035 && b.fill <= 0.6 && (b.share >= 0.6 || (b.bandShare >= 0.5 && sig.density < 0.03));
 }
 // Gemini'ye giden kırpım: sadece yazının olduğu alan (+pay), gri tonlu, küçük → Wi-Fi'da daha hızlı yükleme ve işlem.
@@ -1273,7 +1273,7 @@ async function loop() {
                   event({ tur: 'göz_atma', sebep: 'kutu altından okunamadı' });
                   return;
                 }
-                if (!out.en && !retried[seq] && (looksLikeSubtitle(sig) && sig.density > 0.005 || (boxOpen && placement === 'cover'))) {
+                if (!out.en && !retried[seq] && (looksLikeSubtitle(sig) && sig.density > 0.0015 || (boxOpen && placement === 'cover'))) {
                   // Ekranda altyazı var (ya da Türkçe kutu üstünde) ama model "yok" dedi: tekrar sor. Kutu açıksa önce
                   // belirgin göz at (kutu %60'a iner), sonraki net kareyle oku; yeni cümle kutunun altında kaybolmasın.
                   retried[seq + 1] = true;
