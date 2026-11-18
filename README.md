@@ -10,7 +10,7 @@ Bilgisayar, kamera, capture card ya da başka bir cihaz gerekmez. PS5 HDMI ile T
 
 ![GTA 5'te TranslateOS ile Türkçe altyazı: sarı Türkçe, önceki cümle üstte soluk](docs/screenshots/gta5-turkce-altyazi-sari.jpg)
 
-*Ekran görüntüsü doğrudan TV'den alınmıştır: PS5'te GTA V, LG QNED TV, TranslateOS açık. Sarı Türkçe İngilizce altyazının yerine yazılıyor; bir önceki cümle üstte küçük ve soluk kalıyor. Varsayılan düzende Türkçe İngilizcenin hemen üstünde durur; Sarı tuşla ikisi arasında geçilir.*
+*Ekran görüntüsü doğrudan TV'den alınmıştır: PS5'te GTA V, LG QNED TV, TranslateOS açık. Sarı Türkçe İngilizce altyazının yerine yazılıyor; bir önceki cümle üstte küçük ve soluk kalıyor. Varsayılan düzende Türkçe ekranın en altında, sinema altyazısı gibi durur ve İngilizceyi örtmez; Sarı tuşla İngilizcenin üstüne ya da yerine alınabilir.*
 
 ### Canlı test sonucu
 
@@ -31,13 +31,13 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - 🧠 **Yapay zekâ ile okuma ve çeviri.** Altyazı bölgesi Google Gemini'ye gider; model tek istekte hem okur hem çevirir.
 - 🔥 **Sansürsüz, doğal çeviri.** Sokak ağzı, argo ve küfür yumuşatılmadan, oyundaki sertliğiyle Türkçeye aktarılır. Çeviri yalnızca Türkçedir.
 - ⚡ **Hızlı.** Altyazı göründükten yaklaşık 1–1,5 saniye sonra Türkçesi gelir. Daha önce herhangi bir oyuncunun gördüğü cümleler, yazının şeklinden tanınıp Gemini'ye sorulmadan anında gösterilir.
-- 🕶️ **Okunaklı çeviri ekranı.** Türkçe sarı ve İngilizcenin hemen üstünde; harfler karışmaz, beyaz İngilizceden bir bakışta ayrılır. Bir önceki cümle her zaman üstte küçük ve soluk durur, kaçırdığın cümleyi orada bulursun. İstersen Sarı tuşla Türkçeyi İngilizcenin yerine alabilirsin.
-- 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe biraz geriden ama sırayla gelir; hiçbir cümle silinmez. Tek kelimelik ünlemler ve alttaki görev yazıları da çevrilir.
+- 🕶️ **Okunaklı çeviri ekranı.** Türkçe sarı ve ekranın en altında, geniş tek satır; İngilizceyi örtmez, beyaz İngilizceden bir bakışta ayrılır. Bir önceki cümle üstte küçük ve soluk durur, kaçırdığın cümleyi orada bulursun. Sarı tuşla Türkçeyi İngilizcenin üstüne ya da yerine alabilirsin.
+- 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe biraz geriden ama sırayla gelir; hiçbir cümle silinmez. Tek kelimelik ünlemler, iki kişinin aynı anda görünen satırları ve görev yazıları da çevrilir.
 - 🔑 **Anahtar gerekmez.** Çeviri TranslateOS sunucusu üzerinden yapılır; isteyen Mavi tuşla kendi ücretsiz Gemini anahtarını girip günlük sınırsız kullanabilir.
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
 - 💾 **Cümle hafızası.** Çevrilen her cümle TV'de saklanır; aynı cümle her zaman aynı Türkçeyle çıkar.
 - 🌍 **Ortak hafıza.** Bir oyuncunun çevirdiği cümle herkese anında ve ücretsiz gelir; oyuncu arttıkça çeviri hızlanır, Gemini kullanımı azalır. Sunucuya resim gitmez, sadece İngilizce cümle ve Türkçesi; isim, e-posta ya da IP saklanmaz.
-- 📺 **Kumanda ile kontrol.** OK ya da Yeşil: menü · Sarı: Türkçe üstte / altta · Mavi: kendi Gemini anahtarını gir · 1–4: HDMI girişi · Geri: çıkış.
+- 📺 **Kumanda ile kontrol.** OK ya da Yeşil: menü · Sarı: Türkçenin yeri (en altta / üstte / yerine) · Mavi: kendi Gemini anahtarını gir · 1–4: HDMI girişi · Geri: çıkış.
 - 🔌 **Doğru HDMI girişi kendiliğinden seçilir.** PS5 hangi girişe bağlıysa TranslateOS onu açar; rakam tuşlarıyla seçilen giriş hatırlanır.
 - 🔌 **Sadece açınca çalışır.** TV açılınca kendiliğinden başlamaz. Geri tuşuyla tamamen kapanır, arka planda çalışmaz ve TV normal HDMI görüntüsüne döner.
 - 🔁 **Developer Mode süresi kendiliğinden uzar.**
