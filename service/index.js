@@ -31,9 +31,11 @@ function saveSettings() { try { fs.writeFileSync(SETTINGS_FILE + '.tmp', JSON.st
 var MODEL = CONFIG.model || 'gemini-flash-lite-latest';  // TV'den ölçüm: 0,7–1,0 sn (kalıcı bağlantıyla)
 var KEY_FILE = '/tmp/translateos_app_client_key';
 // Çeviri yeri: 'above' (varsayılan) Türkçe İngilizcenin üstünde · 'cover' Türkçe İngilizcenin yerine (örter). Sarı tuşla değişir, hatırlanır.
-var placement = (SETTINGS.placement || CONFIG.placement) === 'cover' ? 'cover' : 'above';
+var PLACEMENTS = ['bottom', 'above', 'cover'];
+var placement = PLACEMENTS.indexOf(SETTINGS.placement || CONFIG.placement) >= 0 ? (SETTINGS.placement || CONFIG.placement) : 'bottom';
 
 // Altyazı bölgesi (kare oranı). Türkçe kutumuz bunun ÜSTÜNDE durur, bu yüzden bu bölgeye girmez.
+var EN_REGION_BOTTOM = { x0: 0.12, x1: 0.88, y0: 0.80, y1: 0.945 };   // "En altta": en alttaki görev yazısı ve bizim kutu okunmaz
 var EN_REGION = { x0: 0.12, x1: 0.88, y0: 0.84, y1: 1.0 };   // GTA 6: iki konuşmacılı altyazının üst satırı ~%86'da başlar   // üstü: iki satırlık altyazının başı (~%88,8); Türkçe kutu bunun hemen üstünde durur
 
 var subscribers = [];
@@ -543,7 +545,7 @@ var PROMPT = 'This is the bottom strip of a video game frame. If it contains an 
   'Use correct standard Turkish spelling (TDK rules), e.g. "terk edilmiş", "her şey", "bir şey" are written separately. ' +
   'A dialogue subtitle is a spoken line, not a lone character name. Single-word exclamations and very short lines ' +
   '(e.g. "Yay!", "Who?", "Gay!", "Shit.") are dialogue too and must be translated. Short mission objectives shown in the same place (e.g. "Get a car.", ' +
-  '"Lose the Cops.", "Go to the bike rental store.") count as subtitles too and must be translated. Ignore HUD, minimap, location or street names, big mission titles, ' +
+  '"Lose the Cops.", "Go to the bike rental store.") count as subtitles too, but if a thin spoken dialogue line is also visible (objectives are bold, usually below it, often with a coloured word), return ONLY the dialogue line. Ignore HUD, minimap, location or street names, big mission titles, ' +
   'phone screens, signs, license plates and any Turkish text. Part of the subtitle may be faint because it sits behind a ' +
   'semi-transparent box; read it carefully. If the text is unreadable, garbled or not real English words, return empty strings ' +
   'instead of guessing. Reply only JSON with the English FIRST: {"en": "...", "tr": "..."}. If there is no English subtitle, reply {"en": "", "tr": ""}.';
@@ -1135,7 +1137,7 @@ async function loop() {
       try { helpTick(img); } catch (e) { log('ipucu hatası: ' + e.message); }
       pruneLines();
       var tSig = Date.now();
-      var box = regionBox(img, EN_REGION);
+      var box = regionBox(img, placement === 'bottom' ? EN_REGION_BOTTOM : EN_REGION);
       var sh = shade;
       var sig = signature(img, box, sh);
       if (rebase) {
@@ -1425,7 +1427,7 @@ service.register('start', function (message) {
 service.register('stop', function (m) { running = false; m.respond({ returnValue: true }); });
 service.register('setPlacement', function (m) {
   var p = m.payload && m.payload.placement;
-  if (p === 'cover' || p === 'above') { placement = p; SETTINGS.placement = p; saveSettings(); log('yerleşim: ' + (p === 'above' ? 'İngilizcenin üstünde' : 'İngilizcenin yerine')); }
+  if (PLACEMENTS.indexOf(p) >= 0) { placement = p; SETTINGS.placement = p; saveSettings(); log('yerleşim: ' + p); }
   m.respond({ returnValue: true, placement: placement });
 });
 service.register('boxRect', function (m) {

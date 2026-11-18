@@ -9,7 +9,7 @@
   var menuEl = document.getElementById('menu');
   var badgeEl = document.getElementById('badge');
   var bridges = {};
-  var enabled = true, port = 1, statusTimer = null, lastBbox = null, menuTimer = null, menuCloseTimer = null, placement = 'above';
+  var enabled = true, port = 1, statusTimer = null, lastBbox = null, menuTimer = null, menuCloseTimer = null, placement = 'bottom';
 
   // Her çağrı için tek köprü tutulur (abonelikler çöp toplayıcıya gitmesin).
   function luna(name, uri, params, cb) {
@@ -31,13 +31,20 @@
   // Yalnızca genişliği/yüksekliği Türkçe metne göre değişir. GTA altyazısı hep ortada; iki satırlık İngilizcenin
   // üstü ~%88,8, alt kenarı ~%95,5 yükseklikte (ölçüm).
   var ABOVE_BOTTOM = 100;   // px: tek satırlık İngilizcenin (üstü ~%92) hemen üstü. İki satırda kutu İngilizcenin üstüne çıkar.
+  var BOTTOM_EDGE = 10;    // px: "En altta" kutusunun ekranın altından uzaklığı
   var COVER_BOTTOM = 36;    // px: İngilizcenin alt kenarının biraz altı; kutu yukarı doğru büyür
   function placeBox(bbox) {
     var padX = 26, padY = 12;
     var b = bbox || { x0: 0.3, x1: 0.7, y0: 0.9, y1: 0.95 };
     subEl.style.left = (W / 2) + 'px';
     subEl.style.transform = 'translateX(-50%)';
-    if (placement === 'above') {
+    if (placement === 'bottom') {
+      // En altta: ekranın alt kenarında, sinema altyazısı gibi; İngilizceyi hiç örtmez (GTA 6'da görev yazısının üstüne gelir)
+      subEl.style.bottom = BOTTOM_EDGE + 'px';
+      subEl.style.maxWidth = '1100px';
+      subEl.style.minWidth = '0px';
+      subEl.style.minHeight = '0px';
+    } else if (placement === 'above') {
       // İngilizcenin üstünde: ikisi birlikte görünür (senkron kontrolü için). Normalde sabit yükseklik;
       // İngilizce daha yukarıdan başlıyorsa (3 satır gibi) kutu o cümle için yukarı çıkar, İngilizceye asla binmez.
       // İngilizcenin hemen üstü (10 px boşluk). Kutu açıkken servis İngilizce alanını sadece büyütür; böylece konuşma
@@ -69,7 +76,7 @@
     var c = bg[0] + ',' + bg[1] + ',' + bg[2];
     subEl.style.background = 'rgba(' + c + ',' + alpha + ')';
     // "Üstte" modunda gölge küçük: alttaki İngilizceye taşmasın
-    var sh = placement === 'above' ? '0 0 14px 6px' : '0 0 26px 16px';
+    var sh = placement === 'cover' ? '0 0 26px 16px' : '0 0 14px 6px';
     subEl.style.boxShadow = sh + ' rgba(' + c + ',' + (alpha * 0.9).toFixed(2) + ')';
   }
   function setAlpha(a) { alpha = a; paint(); }
@@ -179,11 +186,13 @@
       });
   }
 
+  var PLACE_NAME = { bottom: 'En altta', above: 'Üstte', cover: 'Yerine' };
+  var PLACE_LONG = { bottom: 'en altta', above: 'İngilizcenin üstünde', cover: 'İngilizcenin yerine' };
   // --- Menü ---
   function refreshMenu() {
     luna('stats', SVC + 'stats', {}, function (r) {
       if (r.placement) placement = r.placement;
-      document.getElementById('m-place').textContent = placement === 'above' ? 'Üstte' : 'Altta';
+      document.getElementById('m-place').textContent = PLACE_NAME[placement] || 'En altta';
       if (r.placement) placement = r.placement;
     });
   }
@@ -287,7 +296,7 @@
       if (r.tr) showSub(r.tr, r.bbox);
       else if (r.bbox && !r.pending && subEl.style.display !== 'none') {
         // İngilizce büyüdü (ör. yeni satır geldi): örtü büyüsün / üstteki kutu gerekirse yukarı çıksın
-        if (placement === 'cover' || r.bbox.y0 < (lastBbox ? lastBbox.y0 : 1)) { lastBbox = r.bbox; placeBox(r.bbox); reportRect(); }
+        if (placement === 'cover' || (placement === 'above' && r.bbox.y0 < (lastBbox ? lastBbox.y0 : 1))) { lastBbox = r.bbox; placeBox(r.bbox); reportRect(); }
       }
     });
   }
@@ -302,10 +311,10 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.keyCode === KEY.YELLOW) {
-      placement = placement === 'above' ? 'cover' : 'above';
+      placement = placement === 'bottom' ? 'above' : placement === 'above' ? 'cover' : 'bottom';
       luna('place', SVC + 'setPlacement', { placement: placement });
       if (subEl.style.display !== 'none') { placeBox(lastBbox); reportRect(); }
-      status(placement === 'above' ? 'Çeviri yeri: üstte' : 'Çeviri yeri: altta (İngilizcenin yerine)', 3000);
+      status('Çeviri yeri: ' + PLACE_LONG[placement], 3000);
       if (menuEl.style.display === 'block') refreshMenu();
       e.preventDefault();
     } else if (e.keyCode === KEY.BLUE) {
