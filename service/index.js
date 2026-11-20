@@ -176,6 +176,28 @@ function screenOn(s, why) {
     log('Ekran koruyucu kapatıldı (' + why + '): ' + JSON.stringify(r).slice(0, 80));
   });
 }
+// Ekran koruyucuyu TV'nin kendi yoluyla daha açılmadan reddet (SSAP üzerinden bu yöntem yok; TV içinden luna ile var).
+var ssGuard = { registered: false, denied: 0, last: '' };
+function blockScreenSaver() {
+  try {
+    var sub = service.subscribe('luna://com.webos.service.tvpower/power/registerScreenSaverRequest', { subscribe: true, clientName: 'com.translateos.app' });
+    sub.on('response', function (m) {
+      var r = m.payload || {};
+      if (r.subscribed) ssGuard.registered = true;
+      if (r.returnValue === false) { ssGuard.last = 'hata: ' + (r.errorText || ''); log('Ekran koruyucu engeli kurulamadı: ' + (r.errorText || '')); }
+      if (r.timestamp) {
+        service.call('luna://com.webos.service.tvpower/power/responseScreenSaverRequest',
+          { clientName: 'com.translateos.app', ack: false, timestamp: r.timestamp }, function (a) {
+            ssGuard.denied++; ssGuard.last = JSON.stringify(a.payload || {}).slice(0, 80);
+            log('Ekran koruyucu açılmadan engellendi: ' + ssGuard.last);
+          });
+      }
+    });
+    sub.on('cancel', function () { ssGuard.registered = false; setTimeout(blockScreenSaver, 5000); });
+  } catch (e) { ssGuard.last = 'hata: ' + e.message; }
+}
+blockScreenSaver();
+
 function keepScreenOn(s) {
   s.subscribe('ssap://com.webos.service.tvpower/power/registerScreenSaverRequest', { subscribe: true, clientName: 'com.translateos.app' }, function (r) {
     if (r && r.timestamp && running) {
@@ -549,7 +571,9 @@ var PROMPT = 'This is the bottom strip of a video game frame. If it contains an 
   '"Lose the Cops.", "Go to the bike rental store.") count as subtitles too, but if a thin spoken dialogue line is also visible (objectives are bold, usually below it, often with a coloured word), return ONLY the dialogue line. Ignore HUD, minimap, location or street names, big mission titles, ' +
   'phone screens, signs, license plates and any Turkish text. Part of the subtitle may be faint because it sits behind a ' +
   'semi-transparent box; read it carefully. If the text is unreadable, garbled or not real English words, return empty strings ' +
-  'instead of guessing. Reply only JSON with the English FIRST: {"en": "...", "tr": "..."}. If there is no English subtitle, reply {"en": "", "tr": ""}.';
+  'instead of guessing. If a line starts with a speaker name label (e.g. "JASON:" or a coloured name), put the name in "spk" (without the colon) and leave it OUT of "en" and "tr"; ' +
+  'for two speakers put both names in "spk" separated by \\n in the same order; if there is no name label, "spk" is empty. ' +
+  'Reply only JSON in this order: {"spk": "...", "en": "...", "tr": "..."}. If there is no English subtitle, reply {"en": "", "tr": ""}.';
 
 // Oyun diyalogları (küfür, şiddet) çeviride engellenmesin.
 var SAFETY = ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT']
@@ -700,6 +724,16 @@ function geminiStream(body, thinking, onText) {
 }
 var TR_DONE = /"tr"\s*:\s*"((?:[^"\\]|\\.)*)"/;
 var EN_DONE = /"en"\s*:\s*"((?:[^"\\]|\\.)*)"/;
+var SPK_DONE = /"spk"\s*:\s*"((?:[^"\\]|\\.)*)"/;
+function spkOf(txt) { var m = String(txt).match(SPK_DONE); if (!m) return ''; try { return JSON.parse('"' + m[1] + '"').trim(); } catch (e) { return ''; } }
+// "JASON" → "Jason"; her satırın başına kendi konuşmacısı
+function nameCase(n) { return String(n).toLocaleLowerCase('en').replace(/(^|[\s-])(\S)/g, function (m, a, b) { return a + b.toLocaleUpperCase('en'); }); }   // İngilizce ad: LUCIA → Lucia
+function withSpeaker(tr, spk) {
+  if (!spk || !tr) return tr;
+  var names = spk.split('\n').map(function (x) { return x.trim(); }), lines = String(tr).split('\n');
+  if (names.length === lines.length) return lines.map(function (l, i) { return names[i] ? nameCase(names[i]) + ': ' + l : l; }).join('\n');
+  return nameCase(names[0]) + ': ' + tr;
+}
 // Türkçe metinde sadece Latin alfabesi (Türkçe harfler dahil), rakam ve noktalama olmalı; bozuk karakter varsa gösterme.
 var CLEAN_TR = /^[\p{Script=Latin}\d\s.,!?'"“”‘’…\-–—:;()%&/*+#@]+$/u;
 function cleanTurkish(t) { return CLEAN_TR.test(String(t)); }
@@ -715,13 +749,13 @@ async function readAndTranslateFast(jpg, onEarly) {
       if (me) {
         enSeen = true; var en = ''; try { en = JSON.parse('"' + me[1] + '"').trim(); } catch (e) {}
         var mem = en && looksEnglish(en) && memLookup(normEn(en));
-        if (mem) { early = true; onEarly(mem, Date.now() - t0, 'hafıza', en); return; }   // bilinen cümle: Türkçeyi bekleme
+        if (mem) { early = true; onEarly(mem, Date.now() - t0, 'hafıza', en, spkOf(txt)); return; }   // bilinen cümle: Türkçeyi bekleme
       }
     }
     var m = txt.match(TR_DONE);
     if (m && enSeen) { early = true; var tr = ''; try { tr = JSON.parse('"' + m[1] + '"').trim(); } catch (e) {}
       var me2 = txt.match(EN_DONE), en2 = ''; try { en2 = me2 ? JSON.parse('"' + me2[1] + '"').trim() : ''; } catch (e) {}
-      if (tr && cleanTurkish(tr) && (!en2 || looksEnglish(en2))) onEarly(tr, Date.now() - t0, 'yeni', en2); else early = false; }
+      if (tr && cleanTurkish(tr) && (!en2 || looksEnglish(en2))) onEarly(tr, Date.now() - t0, 'yeni', en2, spkOf(txt)); else early = false; }
   });
   if (res.status === 400 && tm) { thinkingMode[model] = tm === 'level' ? 'budget' : null; return readAndTranslateFast(jpg, onEarly); }
   if (res.status !== 200) throw Object.assign(new Error('Gemini ' + res.status + ': ' + String(res.text).slice(0, 160)), { status: res.status });
@@ -729,14 +763,14 @@ async function readAndTranslateFast(jpg, onEarly) {
   var en = String(o.en || '').trim(), tr = String(o.tr || '').trim(), rejected = '';
   if (en && !looksEnglish(en)) { rejected = 'anlamsız okuma: ' + en; en = ''; tr = ''; }
   else if (en && (!looksTurkish(tr, en) || !cleanTurkish(tr))) { rejected = 'çeviri geçersiz: ' + tr; en = ''; tr = ''; }
-  return { en: en, tr: tr, ms: Date.now() - t0, reused: !!res.reused, rejected: rejected };
+  return { en: en, tr: tr, spk: String(o.spk || '').trim(), ms: Date.now() - t0, reused: !!res.reused, rejected: rejected };
 }
 // Aynı anda 2 istek: önce dönen Türkçe gösterilir (Wi-Fi takılması ve yavaş cevap etkisizleşir). Maliyet önemsiz.
-var PARALLEL = CONFIG.parallel || 2;
+var PARALLEL = CONFIG.parallel || 3;   // kendi anahtarıyla: aynı anda 3 istek, önce dönen gösterilir (Google'ın yavaş kaldığı cümlelerde bekleme kısalır)
 function raceTranslate(jpg, onEarly) {
   return new Promise(function (resolve, reject) {
     var fired = false, done = false, fails = 0;
-    function early(tr, ms, src, en) { if (!fired) { fired = true; onEarly(tr, ms, src, en); } }
+    function early(tr, ms, src, en, spk) { if (!fired) { fired = true; onEarly(tr, ms, src, en, spk); } }
     var par = CONFIG.parallel || (CONFIG.geminiKey ? PARALLEL : 1);   // anahtarsız modda tek istek (ortak kota ve fatura için)
     // Anahtarsız modda yedek: 1,05 sn içinde Türkçe gelmediyse (ölçüm: normali ~0,85–0,95 sn) aynı istek bir kez daha gider, önce dönen kullanılır.
     if (par === 1) setTimeout(function () {
@@ -829,21 +863,21 @@ function normEn(t) { return String(t).toLowerCase().replace(/[^a-z0-9' ]+/g, ' '
 // --- Parmak izi hafızası: yazının şekli → İngilizce cümle (kalıcı: fp.json) ---
 // Aynı cümle tekrar görüldüğünde yapay zekâya sormadan, sadece şekline bakarak hafızadaki Türkçe gösterilir.
 var FP_FILE = MEMORY_FILE ? MEMORY_FILE.replace(/memory\.json$|translateos-memory\.json$/, function (m) { return m.indexOf('translateos') === 0 ? 'translateos-fp.json' : 'fp.json'; }) : null;
-var FP_MATCH = 0.88, fpStore = [], fpDirty = false;
+var FP_MATCH = 0.88, FP_MATCH_MID = 0.96, fpStore = [], fpDirty = false;
 function packBits(bits) { var out = Buffer.alloc(Math.ceil(bits.length / 8)); for (var i = 0; i < bits.length; i++) if (bits[i]) out[i >> 3] |= 1 << (i & 7); return out.toString('base64'); }
 function unpackBits(b64, n) { var buf = Buffer.from(b64, 'base64'), bits = new Uint8Array(n); for (var i = 0; i < n; i++) bits[i] = (buf[i >> 3] >> (i & 7)) & 1; return bits; }
 try { if (FP_FILE && fs.existsSync(FP_FILE)) fpStore = JSON.parse(fs.readFileSync(FP_FILE, 'utf8')).map(function (e) { return { w: e.w, h: e.h, bits: unpackBits(e.b, 1920), en: e.en }; }); } catch (e) {}
-function fpLookup(fp) {
+function fpLookup(fp, need) {
   if (!fp) return null;
   var best = null, bestV = 0, bestShared = false;
   // Önce bu TV'nin kendi şekilleri, sonra herkesin ortak şekilleri (aynı oyun, aynı 960x540 kare: şekil TV'den TV'ye aynı)
   [fpStore, sharedFps].forEach(function (store, si) {
     for (var i = 0; i < store.length; i++) {
-      var e = store[i]; if (Math.abs(e.w - fp.w) > 5 || Math.abs(e.h - fp.h) > 5) continue;
+      var e = store[i], tol = need > FP_MATCH ? 2 : 5; if (Math.abs(e.w - fp.w) > tol || Math.abs(e.h - fp.h) > tol) continue;
       var v = fpSim(fp, e); if (v > bestV) { bestV = v; best = e; bestShared = si === 1; }
     }
   });
-  if (!best || bestV < FP_MATCH) return null;
+  if (!best || bestV < (need || FP_MATCH)) return null;
   var tr = memLookup(normEn(best.en));
   return tr ? { en: best.en, tr: tr, sim: bestV, shared: bestShared } : null;
 }
@@ -1007,7 +1041,10 @@ var shade = null, rebase = false, peekAckAt = 0;   // ekrandaki Türkçe kutunun
 // Yakalama: iki istek üst üste (TV her biri için ~340 ms harcıyor); en son kare işlenir.
 var latest = null, frameSignal = null, capFails = 0;
 function waitFrame() { return new Promise(function (r) { frameSignal = r; }); }
+var workersAlive = 0;
 async function captureWorker(delay) {
+  workersAlive++;
+  try {
   await sleep(delay);
   while (running) {
     try {
@@ -1022,6 +1059,7 @@ async function captureWorker(delay) {
       await sleep(1000);
     }
   }
+  } finally { workersAlive--; }
 }
 
 async function loop() {
@@ -1096,6 +1134,7 @@ async function loop() {
     if (keep.length < lines.length) { lines = keep; shown = linesText(); emit({ tr: shown, keep: true }); }
   }
   function show(seq, sig, out, ms, bbox) {
+    if (out && out.spk && out.tr) out = Object.assign({}, out, { tr: withSpeaker(out.tr, out.spk) });   // "Jason: …"
     // Hızlı konuşmada çeviriler sırasız dönebilir; hiçbir cümle atılmaz.
     if (seq < latestShownSeq) {
       if (out.tr && pushLine(out.tr, true, out.en)) {
@@ -1128,6 +1167,7 @@ async function loop() {
     try {
       if (Date.now() - lastBeat > 10000) { lastBeat = Date.now(); log('nabız: kare ' + stats.frames + ', istek ' + stats.calls + ', önbellek ' + stats.cacheHits + ', hata ' + stats.errors + ', parmak izi ' + fpStore.length + ' (isabet ' + (stats.fpHits || 0) + '), güvence ' + (stats.safety || 0) + ', bekleyen ' + inFlight + (shade ? ', kutu açık' : '')); }
       loopStage = 'kare bekleniyor';
+      if (!latest && workersAlive === 0) { log('ekran okuma durmuştu, yeniden başlatılıyor'); captureWorker(0); captureWorker(170); }   // uygulama durup açılınca işçiler kalmasın
       if (!latest) await withTimeout(waitFrame(), 8000, 'kare');
       var fr = latest; latest = null;
       if (!fr) continue;
@@ -1138,7 +1178,13 @@ async function loop() {
       try { helpTick(img); } catch (e) { log('ipucu hatası: ' + e.message); }
       pruneLines();
       var tSig = Date.now();
-      var box = regionBox(img, placement === 'bottom' ? EN_REGION_BOTTOM : EN_REGION);
+      var region = EN_REGION;
+      if (placement === 'bottom') {
+        region = EN_REGION_BOTTOM;
+        // Kutu (önceki cümleyle iki satır olunca) yukarı uzayabilir: okuma alanı kutunun hemen üstünde bitsin, kendi Türkçemizi okumayalım
+        if (shade && shade.y0 < region.y1) region = { x0: region.x0, x1: region.x1, y0: region.y0, y1: Math.max(region.y0 + 0.03, shade.y0 - 0.004) };
+      }
+      var box = regionBox(img, region);
       var sh = shade;
       var sig = signature(img, box, sh);
       if (rebase) {
@@ -1232,7 +1278,10 @@ async function loop() {
           if (safetyRead) { stats.safety = (stats.safety || 0) + 1; event({ tur: 'güvence_okuması' }); }
           // (Not: şekil benzerliğiyle 'aynı cümle' tahmini kısa satırlarda yanlış eşleştirdi; kaldırıldı. Doğruluk önce.)
           lastTiming = 'yakalama ' + fr.capMs + ' ms, çözme ' + (tSig - tDec) + ' ms, imza ' + (Date.now() - tSig) + ' ms';
-          var fpHit = !hit && !underBox && !fresh && sig.bbox && (sig.bbox.x1 - sig.bbox.x0) > 0.3 && fpLookup(sig.bbox.fp);   // kısa satırda şekil benzerliği yanıltır
+          // Şekil hafızası: geniş satırda normal eşik; GTA 6'nın küçük yazısındaki orta boy satırlarda (ekranın %16–30'u) çok daha sıkı eşik.
+          // Çok kısa satırlarda şekil benzerliği yanıltır, orada her zaman Gemini'ye sorulur.
+          var bw = sig.bbox ? sig.bbox.x1 - sig.bbox.x0 : 0;
+          var fpHit = !hit && !underBox && !fresh && sig.bbox && bw > 0.16 && fpLookup(sig.bbox.fp, bw > 0.3 ? FP_MATCH : FP_MATCH_MID);
           if (fpHit) {
             hit = { en: fpHit.en, tr: fpHit.tr };
             stats.cacheHits++; stats.fpHits = (stats.fpHits || 0) + 1;
@@ -1245,11 +1294,11 @@ async function loop() {
             stats.calls++; inFlight++; lastGemini = Date.now();
             (function (seq, sig, jpg, tc, bbox) {
               var earlyTr = null, earlySrc = '', earlyEn = '';
-              withTimeout(raceTranslate(jpg, function (tr, ems, src, en) {
+              withTimeout(raceTranslate(jpg, function (tr, ems, src, en, spk) {
                 // Türkçe hazır (hafızadan ya da yeni çeviri): hemen göster. Sonradan bu metin değiştirilmez.
                 earlyTr = tr; earlySrc = src; earlyEn = en || '';
                 if (src === 'hafıza') stats.cacheHits++;
-                show(seq, sig, { en: earlyEn, tr: tr, ms: ems, reused: true, early: true, src: src }, Date.now() - tc, bbox);
+                show(seq, sig, { en: earlyEn, tr: tr, spk: spk || '', ms: ems, reused: true, early: true, src: src }, Date.now() - tc, bbox);
                 event({ tur: 'gösterildi', kaynak: src, en: earlyEn, tr: tr, gecikme_ms: Date.now() - tc, gemini_ms: ems });
               }), 8000, 'çeviri').then(function (out) {
                 if (earlyTr) {
@@ -1312,17 +1361,25 @@ async function loop() {
 }
 
 // --- Kurulum sayfası: telefon QR kodu okutup bu sayfadan Gemini anahtarını girer ---
+
+// Eski bir deneme ayarı ve dosyaları kaldıysa silinir.
+if (SETTINGS.dub) { delete SETTINGS.dub; saveSettings(); }
+try { fs.rmSync(path.join(__dirname, 'dub-cache'), { recursive: true, force: true }); } catch (e) {}
+
 var SETUP_PORT = 8891, setupCode = String(Math.floor(100000 + Math.random() * 900000)), setupServer = null;
-var SETUP_HTML = function (msg) { return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+var SETUP_HEAD = function () { return '<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
   '<title>TranslateOS kurulum</title><style>body{font-family:-apple-system,sans-serif;background:#0b1220;color:#e9f2fb;margin:0;padding:24px;max-width:520px}' +
   'h1{font-size:26px;display:flex;align-items:center;gap:12px}h1 img{width:52px;height:52px}h1 b{color:#5ec8ff}p,li{color:#a9bccf;line-height:1.5}input{width:100%;box-sizing:border-box;font-size:17px;padding:14px;border-radius:10px;border:1px solid #2b3d55;background:#111a2b;color:#fff}' +
   'button{margin-top:14px;width:100%;font-size:18px;padding:14px;border:0;border-radius:10px;background:#5ec8ff;color:#06121f;font-weight:700}' +
   '.ok{background:#12351f;color:#7ef0a8;padding:12px;border-radius:10px}.err{background:#3a1515;color:#ff9a9a;padding:12px;border-radius:10px}a{color:#5ec8ff}</style></head><body>' +
-  '<h1><img src="/logo.png" alt=""><span>Translate<b>OS</b> kurulum</span></h1>' + (msg || '') +
+  '<h1><img src="/logo.png" alt=""><span>Translate<b>OS</b> kurulum</span></h1>'; };
+var SETUP_HTML_BASE = function (inner) { return SETUP_HEAD() + inner + '</body></html>'; };
+var SETUP_HTML = function (msg) { return SETUP_HEAD() + (msg || '') +
   '<ol><li><a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> adresinde Google hesabınla giriş yap.</li>' +
   '<li><b>Create API key</b> ile ücretsiz anahtar oluştur ve kopyala.</li><li>Aşağıya yapıştır ve kaydet.</li></ol>' +
   '<form method="POST" action="/key"><input type="hidden" name="code" value="' + setupCode + '"><input name="key" placeholder="Gemini API anahtarı" autocomplete="off" autocapitalize="off" spellcheck="false" required>' +
-  '<button>TV\'ye kaydet</button></form><p style="font-size:13px">Anahtar sadece bu TV\'de saklanır.</p></body></html>'; };
+  '<button>TV\'ye kaydet</button></form><p style="font-size:13px">Anahtar sadece bu TV\'de saklanır.</p>' +
+  '</body></html>'; };
 function startSetupServer() {
   if (setupServer) return;
   setupServer = require('http').createServer(function (req, res) {
@@ -1438,7 +1495,7 @@ service.register('boxRect', function (m) {
   if (p.peek) peekAckAt = Date.now();
   m.respond({ returnValue: true });
 });
-service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, shared: Object.keys(sharedByEn).length, mode: CONFIG.geminiKey ? 'own' : (keylessReady ? 'keyless' : 'none'), placement: placement, devmodeHours: devmodeHours }, stats)); });
+service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, screenSaverGuard: ssGuard, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, shared: Object.keys(sharedByEn).length, mode: CONFIG.geminiKey ? 'own' : (keylessReady ? 'keyless' : 'none'), placement: placement, devmodeHours: devmodeHours }, stats)); });
 // --- HDMI girişi: cihaz bağlı olan girişi kendiliğinden seç ---
 // Öncelik: kullanıcının son seçtiği giriş (bağlıysa) > oyun konsolu adı taşıyan bağlı giriş > ilk bağlı giriş > HDMI 1
 var CONSOLE_RE = /ps5|ps4|playstation|xbox|switch|nintendo|steam|pc|oyun|game/i;

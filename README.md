@@ -32,6 +32,7 @@ GTA V'te 10 dakika kesintisiz oynanıp TV'den alınan 570 kare tek tek incelendi
 - 🔥 **Sansürsüz, doğal çeviri.** Sokak ağzı, argo ve küfür yumuşatılmadan, oyundaki sertliğiyle Türkçeye aktarılır. Çeviri yalnızca Türkçedir.
 - ⚡ **Hızlı.** Altyazı göründükten yaklaşık 1–1,5 saniye sonra Türkçesi gelir. Daha önce herhangi bir oyuncunun gördüğü cümleler, yazının şeklinden tanınıp Gemini'ye sorulmadan anında gösterilir.
 - 🕶️ **Okunaklı çeviri ekranı.** Türkçe sarı ve ekranın en altında, geniş tek satır; İngilizceyi örtmez, beyaz İngilizceden bir bakışta ayrılır. Bir önceki cümle üstte küçük ve soluk durur, kaçırdığın cümleyi orada bulursun. Sarı tuşla Türkçeyi İngilizcenin üstüne ya da yerine alabilirsin.
+- 🎭 **Kim konuşuyor belli.** Oyunda konuşmacı adları açıksa Türkçe de adıyla gelir: "Jason: Ne dedi lan?".
 - 🗣️ **Hızlı konuşmada da eksiksiz.** Cümleler çeviriden hızlı akarsa Türkçe biraz geriden ama sırayla gelir; hiçbir cümle silinmez. Tek kelimelik ünlemler, iki kişinin aynı anda görünen satırları ve görev yazıları da çevrilir.
 - 🔑 **Anahtar gerekmez.** Çeviri TranslateOS sunucusu üzerinden yapılır; isteyen Mavi tuşla kendi ücretsiz Gemini anahtarını girip günlük sınırsız kullanabilir.
 - ⏱️ **Okunabilir süre.** Her Türkçe altyazı, uzunluğuna göre en az 2,5–7 saniye ekranda kalır.
