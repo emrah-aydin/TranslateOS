@@ -561,8 +561,13 @@ service.register('helpRect', function (m) {
 // --- Gemini ---
 var PROMPT = 'This is the bottom strip of a video game frame. If it contains an English dialogue subtitle (usually white, centered, ' +
   'possibly two lines), return the exact English text and its Turkish translation. ' +
-  'Rules: translate ONLY into Turkish, never into any other language. Do not censor, soften, skip or summarize anything: ' +
-  'profanity, slurs, insults and slang must be translated faithfully with equally strong natural Turkish street language. ' +
+  'Rules: translate ONLY into Turkish, never into any other language. Do not censor, soften, skip or summarize anything. ' +
+  'Keep the tone EXACTLY: swear words, slurs and insults that ARE in the English must be translated with equally strong natural Turkish ones, ' +
+  'never softened ("Shut the fuck up" = "Kapa çeneni amına koyayım", "piece of shit" = "bok herif", "motherfucker" = "orospu çocuğu", "fuck!" = "siktir!"), ' +
+  'but NEVER add swearing, insults or crude words that are not in the English (no "amk", "amına koyayım", "siktir", "defol" unless the English has a matching word). ' +
+  'Mild words stay mild: "whoa"/"jeez" = "vay be"/"hay Allah", "man"/"dude"/"bro" = "dostum"/"kanka", "heck" = "ne halt", "get out/get in" = "çık/bin". ' +
+  'Mission objectives are neutral commands ("Get in the sea plane" = "Deniz uçağına bin"). ' +
+  'If the text is still appearing or its last word is visibly cut off, return empty strings. ' +
   'Keep names and places as they are. Make it sound like natural spoken Turkish game subtitles. ' +
   'Use correct standard Turkish spelling (TDK rules), e.g. "terk edilmiş", "her şey", "bir şey" are written separately. ' +
   'A dialogue subtitle is a spoken line, not a lone character name. If two speakers\' lines are shown together (the second line is often grey), ' +
@@ -900,8 +905,21 @@ setInterval(function () {
 }, 7000);
 
 var memoryDirty = false;
+// Hatalı kayıt: İngilizce yerine bizim Türkçe yazımız okunmuş, ya da İngilizcede olmayan bir küfür eklenmiş. Hafızaya alınmaz,
+// eski hafızadan ve ortak hafızadan gelenler de atılır (önceki sürümün talimatı küfrü abartıyordu).
+var TR_SWEAR = /(^|[\s"'.,!?…:;(-])(sik|amk\b|amına|amın\b|ananı|anasını|orospu|piç|yarra|yarağ|defol)/;   // büyük-küçük harfe duyarsız değil: "sık" (ateş et) ≠ "sik"
+var EN_SWEAR = /\b(fuck|shit|bitch|ass\b|asses|asshole|dick|damn|hell\b|cunt|prick|bastard|pussy|cock|motherf|piss|crap|screw|whore|slut|jesus|christ|goddamn|bullshit|freakin|frickin|get (out|lost)|beat it|scram|bugger|bloody|twat|wanker|jerk|penis|nuts|balls|b\b|ho\b|hoe|son of a)/i;
+function trLower(t) { return String(t || '').replace(/I/g, 'ı').replace(/İ/g, 'i').toLowerCase(); }
+function badPair(en, tr) {
+  if (/[ğşıİĞŞ]/.test(String(en))) return true;
+  return TR_SWEAR.test(trLower(tr)) && !EN_SWEAR.test(String(en));
+}
+function cleanMemory(map) {
+  var n = 0; Object.keys(map).forEach(function (k) { if (badPair(k, map[k])) { delete map[k]; n++; } }); return n;
+}
 function remember(en, tr) {
   var k = normEn(en); if (!k || !tr) return;
+  if (badPair(en, tr)) return;
   if (cacheByEn[k] === tr) return;
   cacheByEn[k] = tr; memoryDirty = true;
   if (!sharedByEn[k]) sharedAdd(en, tr);
@@ -941,6 +959,7 @@ function addSharedFps(list) {
 var SHARED_FILE = path.join(__dirname, 'shared.json');
 var sharedAgent = new https.Agent({ keepAlive: true, maxSockets: 2 });
 try { var sj = JSON.parse(fs.readFileSync(SHARED_FILE, 'utf8')); sharedByEn = sj.lines || {}; sharedSince = sj.since || 0; addSharedFps(sj.fps); } catch (e) {}
+setTimeout(function () { var a = cleanMemory(cacheByEn), b = cleanMemory(sharedByEn); if (a) memoryDirty = true; if (a || b) log('hafıza temizlendi: ' + a + ' kendi, ' + b + ' ortak hatalı kayıt atıldı'); }, 1000);
 function sharedOn() { return SETTINGS.share !== false && !!SHARED_URL; }
 function sharedReq(method, p, body) {
   return new Promise(function (resolve) {
@@ -972,7 +991,7 @@ async function sharedSync() {
     var full = !sharedSince;
     var r = await sharedReq('GET', '/v1/pack' + (sharedSince ? '?since=' + sharedSince : ''));
     if (r.status === 200 && r.json && r.json.lines) {
-      var n = 0; Object.keys(r.json.lines).forEach(function (k) { if (sharedByEn[k] !== r.json.lines[k]) n++; sharedByEn[k] = r.json.lines[k]; });
+      var n = 0; Object.keys(r.json.lines).forEach(function (k) { if (badPair(k, r.json.lines[k])) return; if (sharedByEn[k] !== r.json.lines[k]) n++; sharedByEn[k] = r.json.lines[k]; });
       sharedSince = r.json.now || Date.now(); sharedLastSync = Date.now();
       var nf = addSharedFps(r.json.fps);
       if (!sharedSeeded) { sharedSeeded = true; setTimeout(seedSharedFps, 5000); }

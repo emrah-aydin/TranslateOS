@@ -1,6 +1,6 @@
 {
   "id": "com.translateos.app",
-  "version": "0.3.20",
+  "version": "0.3.21",
   "vendor": "TranslateOS",
   "type": "web",
   "main": "index.html",
