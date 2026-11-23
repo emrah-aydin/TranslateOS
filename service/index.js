@@ -13,6 +13,21 @@ process.on('uncaughtException', function (e) { try { log('ÇÖKME: ' + (e && e.s
 process.on('unhandledRejection', function (e) { try { log('YAKALANMAYAN: ' + (e && e.stack || e)); } catch (x) {} });
 var lastBeat = 0, loopStage = 'başlamadı';
 var REGISTRATION = require('./registration.json');
+
+// Bekçi: ayrı bir iş parçacığı ana kısmın kalp atışını izler. Ana kısım 25 sn cevap vermezse (takıldıysa) süreci kapatır;
+// TV uygulaması servisi yeniden çağırınca webOS onu temiz başlatır. Ne olduğu watchdog.log dosyasına yazılır.
+var WATCHDOG_LOG = path.join(__dirname, 'watchdog.log'), watchdogLast = '', watchdogOn = false;
+try { watchdogLast = String(fs.readFileSync(WATCHDOG_LOG, 'utf8')).trim().split('\n').slice(-1)[0] || ''; } catch (e) {}
+try {
+  var WT = require('worker_threads'), heartbeat = new Int32Array(new SharedArrayBuffer(4));
+  Atomics.store(heartbeat, 0, (Date.now() / 1000) | 0);
+  setInterval(function () { Atomics.store(heartbeat, 0, (Date.now() / 1000) | 0); }, 1000);
+  var wk = new WT.Worker("const { workerData } = require('worker_threads'); const fs = require('fs');" +
+    "setInterval(function () { var now = (Date.now() / 1000) | 0; if (now - Atomics.load(workerData.hb, 0) > 25) {" +
+    "try { fs.appendFileSync(workerData.log, new Date().toISOString() + ' servis ' + (now - Atomics.load(workerData.hb, 0)) + ' sn cevap vermedi, yeniden başlatıldı\\n'); } catch (e) {}" +
+    "process.kill(process.pid, 'SIGKILL'); } }, 5000);", { eval: true, workerData: { hb: heartbeat, log: WATCHDOG_LOG } });
+  wk.unref(); watchdogOn = true;
+} catch (e) { watchdogLast = 'bekçi başlatılamadı: ' + e.message; }
 var CONFIG = {};
 try { CONFIG = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.local.json'), 'utf8')); } catch (e) {}   // sadece geliştirme
 // Kullanıcı ayarları (Gemini anahtarı vb.) TV'de saklanır; paketin içinde anahtar YOKTUR.
@@ -585,7 +600,7 @@ var SAFETY = ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CAT
   .map(function (c) { return { category: c, threshold: 'BLOCK_NONE' }; });
 
 // Okunan metin gerçekten İngilizce mi? (Kutu altından bozuk okuma "Eisdeforal" gibi anlamsız çıkabiliyor.)
-var COMMON = ('the a an and or but to of in on at for with you your yours i me my mine we us our he him his she her they them ' +
+var COMMON = ('anything something nothing everything else cool good great nice okay yeah yes hey hi hello thanks thank please sorry well sure fine really still much many more most some any every other another again also always never ever maybe time day night people guy guys money car house home work job place thing things way life world woman girl boy kid friend mom dad help talk call wait move hold leave stay listen hear feel try start love hate kill die dead gun cops police shoot drive walk eat drink sleep play pay buy sell find lose win open close turn show bring send meet mean believe remember forget understand happen matter trouble problem deal sound wrong big small little long old new young first last next only own same better best bad worse sick cold hot fast slow crazy funny stupid sweet pretty happy sad tired ready alright fucking anyway everyone everybody someone somebody nobody anyone guess whatever though because since until while the a an and or but to of in on at for with you your yours i me my mine we us our he him his she her they them ' +
   'their it its is are was were be been being am do does did done have has had not no yes this that these those what who ' +
   'why how where when there here come go get got gonna wanna just like man homie bro dude ok okay right now all out up down ' +
   'off back can could will would should shall may might must let lets so if then than too very really know think want need ' +
@@ -1516,7 +1531,7 @@ service.register('boxRect', function (m) {
   if (p.peek) peekAckAt = Date.now();
   m.respond({ returnValue: true });
 });
-service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, screenSaverGuard: ssGuard, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, shared: Object.keys(sharedByEn).length, mode: CONFIG.geminiKey ? 'own' : (keylessReady ? 'keyless' : 'none'), placement: placement, devmodeHours: devmodeHours }, stats)); });
+service.register('stats', function (m) { m.respond(Object.assign({ returnValue: true, watchdog: watchdogLast, watchdogOn: watchdogOn, screenSaverGuard: ssGuard, model: MODEL, stage: loopStage, running: running, memory: Object.keys(cacheByEn).length, shared: Object.keys(sharedByEn).length, mode: CONFIG.geminiKey ? 'own' : (keylessReady ? 'keyless' : 'none'), placement: placement, devmodeHours: devmodeHours }, stats)); });
 // --- HDMI girişi: cihaz bağlı olan girişi kendiliğinden seç ---
 // Öncelik: kullanıcının son seçtiği giriş (bağlıysa) > oyun konsolu adı taşıyan bağlı giriş > ilk bağlı giriş > HDMI 1
 var CONSOLE_RE = /ps5|ps4|playstation|xbox|switch|nintendo|steam|pc|oyun|game/i;

@@ -305,11 +305,15 @@
   }
   subscribe();
   // Bekçi: servis döngüsü durmuşsa yeniden başlat.
+  // Servis 30 sn hiç cevap vermezse (takıldı ya da bekçi kapattı) yeniden çağrılır; webOS onu temiz başlatır.
+  var lastOk = Date.now();
   setInterval(function () {
     luna('watch', SVC + 'stats', {}, function (r) {
+      if (r.returnValue !== false) lastOk = Date.now();
       if (r.placement) placement = r.placement;
       if (r.returnValue === false || r.running === false) subscribe();
     });
+    if (Date.now() - lastOk > 30000) { lastOk = Date.now(); status('TranslateOS yeniden başlatılıyor…', 4000); subscribe(); }
   }, 10000);
 
   document.addEventListener('keydown', function (e) {
