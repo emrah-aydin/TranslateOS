@@ -1060,7 +1060,7 @@ var shade = null, rebase = false, peekAckAt = 0;   // ekrandaki Türkçe kutunun
 // Yakalama: iki istek üst üste (TV her biri için ~340 ms harcıyor); en son kare işlenir.
 var latest = null, frameSignal = null, capFails = 0;
 function waitFrame() { return new Promise(function (r) { frameSignal = r; }); }
-var workersAlive = 0;
+var workersAlive = 0, trFails = 0;   // trFails: art arda başarısız çeviri (3'te TV'de uyarı çıkar)
 async function captureWorker(delay) {
   workersAlive++;
   try {
@@ -1153,6 +1153,7 @@ async function loop() {
     if (keep.length < lines.length) { lines = keep; shown = linesText(); emit({ tr: shown, keep: true }); }
   }
   function show(seq, sig, out, ms, bbox) {
+    if (ms != null) { if (trFails >= 3) emit({ status: 'trOk' }); trFails = 0; }   // çeviri yeniden geldi
     if (out && out.spk && out.tr) out = Object.assign({}, out, { tr: withSpeaker(out.tr, out.spk) });   // "Jason: …"
     // Hızlı konuşmada çeviriler sırasız dönebilir; hiçbir cümle atılmaz.
     if (seq < latestShownSeq) {
@@ -1364,6 +1365,7 @@ async function loop() {
                 show(seq, sig, out, Date.now() - tc, bbox);
               }).catch(function (e) {
                 stats.errors++; log('çeviri hatası: ' + e.message);
+                trFails++; if (trFails === 3) { lunaCall('luna://com.palm.connectionmanager/getStatus', {}).then(function (net) { emit({ status: 'trFail', online: !!(net && net.isInternetConnectionAvailable) }); }); }
                 if (e.status === 429) backoffUntil = Date.now() + 15000;
                 if (seq === reqSeq) lastSentSig = null;  // tekrar denensin
               }).then(function () { inFlight--; });

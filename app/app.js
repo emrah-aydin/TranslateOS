@@ -286,6 +286,8 @@
       if (r.status === 'nokey' || (r.status === 'started' && r.hasKey === false && !r.keyless)) showSetup();
       if (r.status === 'quota') status(r.scope === 'global' ? 'Bugünlük ortak çeviri kotası doldu. Mavi tuşla kendi ücretsiz Gemini anahtarını girebilirsin.' : 'Bu TV\'nin bugünlük çeviri kotası doldu. Mavi tuşla kendi ücretsiz Gemini anahtarını girebilirsin.', 10000);
       if (r.status === 'keySaved') { hideSetup(); status('Anahtar kaydedildi, çeviri başladı', 4000); }
+      if (r.status === 'trFail') status(r.online ? 'Çeviri yapılamıyor: Google\'a ulaşılamıyor. Biraz sonra kendiliğinden düzelir.' : 'İnternet bağlantısı yok; çeviri yapılamıyor. TV\'nin Wi-Fi bağlantısını kontrol et.', 0);
+      if (r.status === 'trOk') status('Çeviri yeniden çalışıyor', 3000);
       if (r.status === 'captureFailed') status('Bu TV ekran görüntüsü vermiyor; çeviri yapılamıyor. Lütfen GitHub\'da bildir.', 0);
       if (r.clear) hideSub();
       if (r.pending) pendingSub(r.bbox, r.peek);
